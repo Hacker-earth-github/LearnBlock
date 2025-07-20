@@ -9,7 +9,7 @@ const config: HardhatUserConfig = {
     crossFi: {
       url: process.env.CROSSFI_RPC_URL,
       accounts: [process.env.PRIVATE_KEY as string],
-      
+       gasPrice: 3000000000, 
     },
   }
 };
