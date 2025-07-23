@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { BrowserProvider } from 'ethers';
 
-export const provider = new ethers.providers.Web3Provider(window.ethereum);
-export const signer = provider.getSigner();
+export const provider = new BrowserProvider(window.ethereum);
+export const signer = await provider.getSigner();
