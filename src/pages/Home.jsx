@@ -8,13 +8,10 @@ const Home = () => {
       {/* Header */}
       <header className="w-full flex justify-between items-center px-6 py-4 bg-white shadow-md fixed top-0 left-0 z-50">
         <h1 className="text-2xl font-bold text-gray-800">LearnBlock</h1>
-        <Button
-          size="lg"
-          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 text-md font-semibold rounded-xl shadow-md transition-all duration-300"
-        >
+       
           
           <appkit-button />
-        </Button>
+       
       </header>
 
       {/* Main Section */}
