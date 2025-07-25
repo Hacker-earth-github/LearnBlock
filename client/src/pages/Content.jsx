@@ -31,6 +31,8 @@ import QuizInterface from "@/components/QuizInterface"
 import BadgeShowcase from "@/components/BadgeShowcase"
 import UserProfile from "@/components/UserProfile"
 
+//bro
+
 function FloatingElement({ children, delay = 0, className = "" }) {
   return (
     <div
