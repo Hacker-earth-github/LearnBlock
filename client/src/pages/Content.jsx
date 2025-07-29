@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   BookOpen,
   Trophy,
@@ -25,15 +25,19 @@ import {
   Rocket,
   Crown,
   Gem,
-} from "lucide-react"
-import ContentLibrary from "@/components/ContentLibrary"
-import QuizInterface from "@/components/QuizInterface"
-import BadgeShowcase from "@/components/BadgeShowcase"
-import UserProfile from "@/components/UserProfile"
+  Loader2,
+  AlertCircle,
+  UserPlus,
+} from 'lucide-react';
+import ContentLibrary from '@/components/ContentLibrary';
+import QuizInterface from '@/components/QuizInterface';
+import BadgeShowcase from '@/components/BadgeShowcase';
+import UserProfile from '@/components/UserProfile'; // Add this import
+import { useLearnBlock } from '@/context/LearnBlockContext';
+import { useAppKitAccount } from '@reown/appkit/react';
+import { toast } from 'react-toastify';
 
-//bro
-
-function FloatingElement({ children, delay = 0, className = "" }) {
+function FloatingElement({ children, delay = 0, className = '' }) {
   return (
     <div
       className={`absolute animate-pulse ${className}`}
@@ -43,39 +47,114 @@ function FloatingElement({ children, delay = 0, className = "" }) {
     >
       {children}
     </div>
-  )
+  );
 }
 
-
 const Content = () => {
-  const [isConnected, setIsConnected] = useState(false)
-  const [userAddress, setUserAddress] = useState("")
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [userProfile, setUserProfile] = useState({
-    userId: 1,
-    articlesRead: 12,
-    quizzesTaken: 8,
-    totalPointsEarned: 2400,
-    totalPointsRedeemed: 1000,
-    badges: 4,
-    goldenBadgeClaimed: false,
-  })
+  console.log("Content component mounted or reloaded:", { timestamp: new Date().toISOString() });
+  const {
+    userProfile,
+    isUserRegistered,
+    registerUser,
+    refreshUserProfile,
+    isLoading,
+    isRegistering,
+    registrationError,
+    unredeemedPoints,
+    isPendingRegistration,
+  } = useLearnBlock();
+  const [errorMessage, setErrorMessage] = useState(null);
+  const { address, isConnected } = useAppKitAccount();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
+    if (isConnected && address && !isLoading) {
+      setShowRegistrationPrompt(!isUserRegistered && !isPendingRegistration);
+    } else {
+      setShowRegistrationPrompt(false);
     }
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
-  }, [])
+  }, [isConnected, address, isUserRegistered, isPendingRegistration, isLoading]);
 
-  const connectWallet = async () => {
-    setIsConnected(true)
-    setUserAddress("0x1234...5678")
-  }
+  // Retry registration if content becomes available
+  useEffect(() => {
+    if (!isConnected || !address || isUserRegistered || isRegistering || !isPendingRegistration) return;
 
-  const unredeemedPoints = userProfile.totalPointsEarned - userProfile.totalPointsRedeemed
+    const retryRegistration = async () => {
+      try {
+        const result = await registerUser();
+        if (result.success && !result.pending) {
+          setShowRegistrationPrompt(false);
+          await refreshUserProfile();
+          toast.success('Registration successful! Welcome to LearnBlock!', {
+            position: 'top-right',
+            autoClose: 5000,
+          });
+        }
+      } catch (error) {
+        console.error('Retry registration failed:', error);
+      }
+    };
+
+    const interval = setInterval(retryRegistration, 30000); // Retry every 30 seconds
+    return () => clearInterval(interval);
+  }, [isConnected, address, isUserRegistered, isRegistering, isPendingRegistration, registerUser, refreshUserProfile]);
+
+  const handleUserRegistration = async () => {
+    console.log('Starting registration, address:', address, 'isConnected:', isConnected);
+    setErrorMessage(null);
+    try {
+      const result = await registerUser();
+      console.log('registerUser result:', result);
+      if (result.success) {
+        setShowRegistrationPrompt(false); // Close modal on success (even if pending)
+        if (result.pending) {
+          toast.info('Registration pending. You can browse the platform while waiting for content.', {
+            position: 'top-right',
+            autoClose: 5000,
+          });
+        } else {
+          await refreshUserProfile();
+          toast.success('Registration successful! Welcome to LearnBlock!', {
+            position: 'top-right',
+            autoClose: 5000,
+          });
+        }
+      } else {
+        const errorMsg = result.error || 'Registration failed. Please try again.';
+        setErrorMessage(errorMsg);
+        toast.error(errorMsg, {
+          position: 'top-right',
+          autoClose: 5000,
+        });
+      }
+    } catch (error) {
+      console.error('Registration failed:', JSON.stringify(error, null, 2));
+      const errorMsg = error.message || 'An unexpected error occurred during registration.';
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg, {
+        position: 'top-right',
+        autoClose: 5000,
+      });
+    }
+  };
+
+
+const [showLoading, setShowLoading] = useState(false);
+
+
+if (showLoading) {
+  console.log("Rendering loading UI:", { isConnected, isLoading, address, userProfile, isPendingRegistration });
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <Loader2 className="w-12 h-12 animate-spin text-emerald-400 mx-auto" />
+        <h2 className="text-2xl font-bold text-slate-100">Loading your profile...</h2>
+        <p className="text-slate-300">Please wait while we sync your data</p>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 transition-all duration-500">
@@ -84,14 +163,12 @@ const Content = () => {
         <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-emerald-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse" />
         <div
           className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s" }}
+          style={{ animationDelay: '2s' }}
         />
         <div
           className="absolute bottom-20 left-1/3 w-80 h-80 bg-gradient-to-r from-emerald-400/20 to-blue-400/20 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "4s" }}
+          style={{ animationDelay: '4s' }}
         />
-
-        {/* Floating Icons */}
         <FloatingElement delay={0} className="top-32 left-1/4">
           <Sparkles className="w-8 h-8 text-emerald-400/50" />
         </FloatingElement>
@@ -106,13 +183,11 @@ const Content = () => {
         </FloatingElement>
       </div>
 
-      {/* Dark Header */}
+      {/* Header */}
       <header className="relative bg-slate-800/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50 shadow-lg">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-purple-500/10 to-sky-500/10" />
-
         <div className="relative max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-3">
                 <div className="relative w-10 h-10 bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 rounded-xl flex items-center justify-center shadow-lg">
@@ -125,10 +200,9 @@ const Content = () => {
                   <p className="text-xs text-slate-400">Blockchain Education</p>
                 </div>
               </div>
-
-              {isConnected && (
+              {(isConnected && (isUserRegistered || isPendingRegistration)) ? (
                 <nav className="hidden md:flex items-center space-x-6">
-                  {["Overview", "Courses", "Quizzes", "Badges"].map((item) => (
+                  {['Overview', 'Courses', 'Quizzes', 'Badges'].map((item) => (
                     <button
                       key={item}
                       className="relative text-slate-300 hover:text-emerald-400 font-medium transition-all duration-300 group"
@@ -138,12 +212,10 @@ const Content = () => {
                     </button>
                   ))}
                 </nav>
-              )}
+              ) : null}
             </div>
-
-            {/* Actions */}
             <div className="flex items-center space-x-4">
-              {isConnected ? (
+              {(isConnected && (isUserRegistered || isPendingRegistration)) ? (
                 <>
                   <div className="hidden md:flex items-center space-x-3">
                     <div className="relative">
@@ -161,51 +233,92 @@ const Content = () => {
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
-
                   <div className="flex items-center space-x-3">
                     <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 px-3 py-1 rounded-full shadow-sm">
                       <Gem className="w-3 h-3 mr-1" />
-                      {unredeemedPoints} Points
+                      {unredeemedPoints || 0} Points
                     </Badge>
                     <Avatar className="w-9 h-9 ring-2 ring-emerald-400/30 shadow-md">
                       <AvatarFallback className="bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 text-white text-sm font-bold">
-                        {userAddress.slice(2, 4).toUpperCase()}
+                        {address ? address.slice(2, 4).toUpperCase() : '??'}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                 </>
               ) : (
-                <Button
-                  onClick={connectWallet}
-                  className="bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl px-6"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </Button>
+                <div className="flex items-center space-x-4">
+                  <appkit-button />
+                </div>
               )}
             </div>
           </div>
         </div>
       </header>
 
+      {/* Registration Prompt Modal */}
+      {showRegistrationPrompt && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <Card className="max-w-md w-full bg-slate-800 border-slate-700 shadow-2xl">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <UserPlus className="w-8 h-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-slate-100">Welcome to LearnBlock!</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-slate-300 leading-relaxed">
+                Start your learning journey to register your profile on the blockchain and earn XFI tokens and NFT badges!
+              </p>
+              {(errorMessage || registrationError) && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {errorMessage || registrationError?.message || 'Registration failed. Please try again.'}
+                    {registrationError?.message.includes('No content available') && (
+                      <p className="mt-2 text-sm">
+                        No learning content is currently available. You can still browse the platform, and registration will complete automatically when content is added.
+                      </p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-3">
+                <Button
+                  onClick={handleUserRegistration}
+                  disabled={isRegistering}
+                  className="w-full bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white py-3 rounded-xl font-bold shadow-lg"
+                >
+                  {isRegistering ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="w-4 h-4 mr-2" />
+                      Start Learning to Register
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-slate-400">
+                  This will register your profile by interacting with a learning module on the blockchain
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {!isConnected ? (
-        // Dark Landing Page
+        // Landing Page
         <div className="relative">
-          {/* Hero Section */}
           <div className="relative min-h-screen overflow-hidden">
-            {/* Background Image with Dark Overlays */}
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{
-                backgroundImage: "url(/images/blockchain-hero.png)",
-              }}
+              style={{ backgroundImage: 'url(/images/blockchain-hero.png)' }}
             />
-
-            {/* Dark Gradient Overlays */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-emerald-900/80 to-purple-900/90" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-            {/* Subtle Animated Particles */}
             <div className="absolute inset-0">
               {[...Array(15)].map((_, i) => (
                 <div
@@ -219,17 +332,13 @@ const Content = () => {
                 />
               ))}
             </div>
-
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-24 flex items-center min-h-screen">
               <div className="text-center max-w-5xl mx-auto">
-                {/* Dark Badge */}
                 <div className="inline-flex items-center space-x-3 bg-emerald-500/10 border border-emerald-400/30 rounded-full px-6 py-3 mb-8 backdrop-blur-xl shadow-sm">
                   <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-sky-400 rounded-full animate-pulse" />
                   <span className="text-emerald-300 text-sm font-medium">🚀 Powered by Blockchain Technology</span>
                   <Sparkles className="w-4 h-4 text-emerald-400" />
                 </div>
-
-                {/* Main Heading with Dark Theme Colors */}
                 <h1 className="text-7xl md:text-8xl lg:text-9xl font-black mb-8 leading-tight">
                   <span className="block bg-gradient-to-r from-emerald-300 via-purple-300 to-sky-300 bg-clip-text text-transparent drop-shadow-sm">
                     Learn
@@ -241,25 +350,17 @@ const Content = () => {
                     Earn Crypto
                   </span>
                 </h1>
-
                 <p className="text-xl md:text-2xl text-slate-200 mb-12 leading-relaxed max-w-4xl mx-auto">
                   Join the future of education where knowledge becomes currency. Master blockchain technology,
                   <span className="text-emerald-300 font-semibold"> earn XFI tokens</span>, and
                   <span className="text-purple-300 font-semibold"> collect exclusive NFT badges</span>.
                 </p>
-
-                {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
-                  <Button
-                    onClick={connectWallet}
-                    size="lg"
-                    className="group relative bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white px-10 py-5 text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
-                  >
-                    <Rocket className="w-6 h-6 mr-3 group-hover:animate-bounce relative z-10" />
-                    <span className="relative z-10">Start Learning Now</span>
-                    <Sparkles className="w-6 h-6 ml-3 group-hover:animate-spin relative z-10" />
-                  </Button>
-
+                  <div className="group relative bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white px-10 py-5 text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
+                    <Rocket className="w-6 h-6 mr-3 group-hover:animate-bounce relative z-10 inline" />
+                    <span className="relative z-10">Connect Wallet to Start</span>
+                    <Sparkles className="w-6 h-6 ml-3 group-hover:animate-spin relative z-10 inline" />
+                  </div>
                   <Button
                     variant="outline"
                     size="lg"
@@ -269,38 +370,12 @@ const Content = () => {
                     Watch Demo
                   </Button>
                 </div>
-
-                {/* Dark Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   {[
-                    {
-                      number: "100M+",
-                      label: "Developers",
-                      color: "from-emerald-400 to-emerald-600",
-                      bg: "bg-slate-800/30",
-                      border: "border-slate-700/50",
-                    },
-                    {
-                      number: "4M+",
-                      label: "Organizations",
-                      color: "from-purple-400 to-purple-600",
-                      bg: "bg-slate-800/30",
-                      border: "border-slate-700/50",
-                    },
-                    {
-                      number: "420M+",
-                      label: "Repositories",
-                      color: "from-sky-400 to-sky-600",
-                      bg: "bg-slate-800/30",
-                      border: "border-slate-700/50",
-                    },
-                    {
-                      number: "90%",
-                      label: "Fortune 100",
-                      color: "from-yellow-400 to-orange-500",
-                      bg: "bg-slate-800/30",
-                      border: "border-slate-700/50",
-                    },
+                    { number: '100M+', label: 'Developers', color: 'from-emerald-400 to-emerald-600', bg: 'bg-slate-800/30', border: 'border-slate-700/50' },
+                    { number: '4M+', label: 'Organizations', color: 'from-purple-400 to-purple-600', bg: 'bg-slate-800/30', border: 'border-slate-700/50' },
+                    { number: '420M+', label: 'Repositories', color: 'from-sky-400 to-sky-600', bg: 'bg-slate-800/30', border: 'border-slate-700/50' },
+                    { number: '90%', label: 'Fortune 100', color: 'from-yellow-400 to-orange-500', bg: 'bg-slate-800/30', border: 'border-slate-700/50' },
                   ].map((stat, index) => (
                     <div
                       key={index}
@@ -318,7 +393,6 @@ const Content = () => {
               </div>
             </div>
           </div>
-
           {/* Features Section */}
           <div className="relative py-32 bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
             <div className="max-w-7xl mx-auto px-4">
@@ -392,7 +466,7 @@ const Content = () => {
                 Join thousands of developers already earning while they learn on LearnBlock
               </p>
               <Button
-                onClick={connectWallet}
+                onClick={<appkit-button/>}
                 size="lg"
                 className="bg-white text-slate-800 hover:bg-slate-100 px-12 py-6 text-xl font-bold rounded-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300"
               >
@@ -403,49 +477,61 @@ const Content = () => {
             </div>
           </div>
         </div>
-      ) : (
-        // Dark Dashboard
+   
+      ) : (isUserRegistered || isPendingRegistration) ? (
+        // Main Dashboard
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {isPendingRegistration && (
+            <Alert className="mb-6 bg-yellow-900/20 border-yellow-500/30 text-left">
+              <AlertCircle className="h-4 w-4 text-yellow-400" />
+              <AlertDescription className="text-yellow-300">
+                Your profile is pending registration due to no available content. You can browse the platform, but some features (e.g., earning points or badges) will be available once content is added.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar */}
             <div className="lg:w-80 space-y-6">
-              {/* User Profile Card */}
               <Card className="border-0 shadow-lg overflow-hidden relative bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl">
                 <CardContent className="relative z-10 p-8">
                   <div className="flex items-center space-x-4 mb-6">
                     <Avatar className="w-20 h-20 ring-4 ring-emerald-400/30 shadow-lg">
                       <AvatarFallback className="bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 text-white text-xl font-black">
-                        {userAddress.slice(2, 4).toUpperCase()}
+                        {address ? address.slice(2, 4).toUpperCase() : '??'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-100">User #{userProfile.userId}</h3>
+                      <h3 className="text-xl font-bold text-slate-100">
+                        {isUserRegistered && userProfile ? `User #${userProfile.userId}` : 'Guest User'}
+                      </h3>
                       <p className="text-sm text-slate-400 font-mono bg-slate-700 px-2 py-1 rounded-lg">
-                        {userAddress}
+                        {address}
                       </p>
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-slate-700/80 rounded-xl border border-slate-600/50">
                       <span className="text-slate-300 font-medium">Total Points</span>
-                      <span className="text-xl font-bold text-slate-100">{userProfile.totalPointsEarned}</span>
+                      <span className="text-xl font-bold text-slate-100">
+                        {userProfile ? userProfile.totalPointsEarned : 0}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl border border-slate-500/50">
                       <span className="text-slate-300 font-medium">Available</span>
                       <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-purple-400 bg-clip-text text-transparent">
-                        {unredeemedPoints}
+                        {unredeemedPoints || 0}
                       </span>
                     </div>
-                    <Button className="w-full bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+                    <Button
+                      disabled={!isUserRegistered || !unredeemedPoints || unredeemedPoints === '0'}
+                      className="w-full bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
                       <Gem className="w-5 h-5 mr-2" />
-                      Claim {(unredeemedPoints * 0.1).toFixed(1)} XFI
+                      Claim {((unredeemedPoints || 0) * 0.1).toFixed(1)} XFI
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Quick Stats */}
               <Card className="border-0 shadow-lg bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl">
                 <CardHeader>
                   <CardTitle className="text-xl font-bold text-slate-100 flex items-center">
@@ -457,27 +543,27 @@ const Content = () => {
                   {[
                     {
                       icon: BookOpen,
-                      label: "Articles",
-                      value: userProfile.articlesRead,
-                      color: "text-emerald-400",
-                      bg: "bg-slate-700",
-                      border: "border-slate-600",
+                      label: 'Articles',
+                      value: userProfile ? userProfile.articlesRead : 0,
+                      color: 'text-emerald-400',
+                      bg: 'bg-slate-700',
+                      border: 'border-slate-600',
                     },
                     {
                       icon: Target,
-                      label: "Quizzes",
-                      value: userProfile.quizzesTaken,
-                      color: "text-purple-400",
-                      bg: "bg-slate-700",
-                      border: "border-slate-600",
+                      label: 'Quizzes',
+                      value: userProfile ? userProfile.quizzesTaken : 0,
+                      color: 'text-purple-400',
+                      bg: 'bg-slate-700',
+                      border: 'border-slate-600',
                     },
                     {
                       icon: Award,
-                      label: "Badges",
-                      value: userProfile.badges,
-                      color: "text-sky-400",
-                      bg: "bg-slate-700",
-                      border: "border-slate-600",
+                      label: 'Badges',
+                      value: userProfile ? userProfile.badges : 0,
+                      color: 'text-sky-400',
+                      bg: 'bg-slate-700',
+                      border: 'border-slate-600',
                     },
                   ].map((stat, index) => (
                     <div
@@ -494,17 +580,16 @@ const Content = () => {
                 </CardContent>
               </Card>
             </div>
-
             {/* Main Content */}
             <div className="flex-1">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
                 <TabsList className="bg-slate-800/80 border border-slate-700 p-2 shadow-lg backdrop-blur-xl rounded-2xl">
                   {[
-                    { value: "dashboard", icon: Activity, label: "Overview" },
-                    { value: "content", icon: BookOpen, label: "Courses" },
-                    { value: "quiz", icon: Target, label: "Quizzes" },
-                    { value: "badges", icon: Award, label: "Badges" },
-                    { value: "profile", icon: Users, label: "Profile" },
+                    { value: 'dashboard', icon: Activity, label: 'Overview' },
+                    { value: 'content', icon: BookOpen, label: 'Courses' },
+                    { value: 'quiz', icon: Target, label: 'Quizzes' },
+                    { value: 'badges', icon: Award, label: 'Badges' },
+                    { value: 'profile', icon: Users, label: 'Profile' },
                   ].map((tab) => (
                     <TabsTrigger
                       key={tab.value}
@@ -516,129 +601,76 @@ const Content = () => {
                     </TabsTrigger>
                   ))}
                 </TabsList>
-
                 <TabsContent value="dashboard" className="space-y-8">
-                  {/* Activity Feed */}
-                  <Card className="border-0 shadow-lg bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl">
-                    <CardHeader>
-                      <CardTitle className="text-2xl font-bold text-slate-100 flex items-center">
-                        <Activity className="w-6 h-6 mr-3 text-emerald-400" />
-                        Recent Activity
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {[
-                          {
-                            icon: CheckCircle,
-                            title: "Completed Blockchain Fundamentals Quiz",
-                            subtitle: "Earned 300 points • 2 hours ago",
-                            color: "bg-green-900/30 text-green-400",
-                            border: "border-green-500/20",
-                          },
-                          {
-                            icon: BookOpen,
-                            title: "Read Smart Contract Security Best Practices",
-                            subtitle: "5 hours ago",
-                            color: "bg-blue-900/30 text-blue-400",
-                            border: "border-blue-500/20",
-                          },
-                          {
-                            icon: Award,
-                            title: "Earned Scholar Badge",
-                            subtitle: "Reached 2000 points milestone • 1 day ago",
-                            color: "bg-purple-900/30 text-purple-400",
-                            border: "border-purple-500/20",
-                          },
-                        ].map((activity, index) => (
-                          <div
-                            key={index}
-                            className={`flex items-start space-x-4 p-4 bg-slate-700 rounded-xl border ${activity.border} hover:shadow-sm transition-all duration-300 group`}
-                          >
-                            <div
-                              className={`w-12 h-12 rounded-xl flex items-center justify-center ${activity.color} border ${activity.border} group-hover:scale-110 transition-transform duration-300`}
-                            >
-                              <activity.icon className="w-6 h-6" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-slate-100 mb-1">{activity.title}</p>
-                              <p className="text-sm text-slate-400">{activity.subtitle}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Progress Cards */}
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-900/20 via-orange-900/20 to-red-900/20 backdrop-blur-xl overflow-hidden relative border border-yellow-500/20">
-                      <CardHeader className="relative z-10">
-                        <CardTitle className="text-xl font-bold text-slate-100 flex items-center">
-                          <Trophy className="w-6 h-6 mr-3 text-yellow-400" />
-                          Badge Progress
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="relative z-10">
-                        <div className="space-y-4">
-                          <div className="flex justify-between text-lg">
-                            <span className="text-slate-300 font-medium">Next badge in</span>
-                            <span className="font-bold text-slate-100">
-                              {500 - (userProfile.totalPointsEarned % 500)} points
-                            </span>
-                          </div>
-                          <Progress value={(userProfile.totalPointsEarned % 500) / 5} className="h-3 rounded-full" />
-                          <div className="flex justify-between text-sm text-slate-400">
-                            <span>{userProfile.totalPointsEarned % 500}/500</span>
-                            <span>Badge #{userProfile.badges + 1}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20 backdrop-blur-xl overflow-hidden relative border border-blue-500/20">
-                      <CardHeader className="relative z-10">
-                        <CardTitle className="text-xl font-bold text-slate-100 flex items-center">
-                          <Zap className="w-6 h-6 mr-3 text-emerald-400" />
-                          Learning Streak
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="relative z-10">
-                        <div className="text-center">
-                          <div className="text-5xl font-black bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 bg-clip-text text-transparent mb-2">
-                            7
-                          </div>
-                          <div className="text-lg text-slate-300 font-medium mb-2">days in a row</div>
-                          <div className="text-sm text-slate-400">Keep it up! You're on fire 🔥</div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  {/* Dashboard content */}
                 </TabsContent>
-
                 <TabsContent value="content">
                   <ContentLibrary />
                 </TabsContent>
-
                 <TabsContent value="quiz">
                   <QuizInterface />
                 </TabsContent>
-
                 <TabsContent value="badges">
                   <BadgeShowcase userProfile={userProfile} />
                 </TabsContent>
-
                 <TabsContent value="profile">
-                  <UserProfile userProfile={userProfile} userAddress={userAddress} />
+                  <UserProfile userProfile={userProfile} userAddress={address} />
                 </TabsContent>
               </Tabs>
             </div>
           </div>
         </div>
+      ) : (
+        // Registration Required State
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="max-w-lg w-full bg-slate-800/95 backdrop-blur-xl border-slate-700 shadow-2xl">
+            <CardContent className="p-8 text-center space-y-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 rounded-full flex items-center justify-center mx-auto">
+                <UserPlus className="w-10 h-10 text-white" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold text-slate-100 mb-2">Almost There!</h2>
+                <p className="text-slate-300 leading-relaxed">
+                  Your wallet is connected. Complete your registration to access the learning platform.
+                </p>
+              </div>
+              {(errorMessage || registrationError) && (
+                <Alert className="bg-red-900/20 border-red-500/30 text-left">
+                  <AlertCircle className="h-4 w-4 text-red-400" />
+                  <AlertDescription className="text-red-300">
+                    {errorMessage || registrationError?.message || 'Registration failed. Please try again.'}
+                    {registrationError?.message.includes('No content available') && (
+                      <p className="mt-2 text-sm">
+                        No learning content is currently available. You can still browse the platform, and registration will complete automatically when content is added.
+                      </p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Button
+                onClick={handleUserRegistration}
+                disabled={isRegistering}
+                size="lg"
+                className="w-full bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white py-4 text-lg font-bold rounded-xl shadow-lg"
+              >
+                {isRegistering ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Creating Your Profile...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="w-5 h-5 mr-2" />
+                    Complete Registration
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
-  )
+  );
+};
 
-}
-
-export default Content
+export default Content;
