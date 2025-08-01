@@ -1,109 +1,75 @@
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { BookOpen, Clock, Star, Search, CheckCircle, Zap, Brain, Globe } from "lucide-react"
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { BookOpen, Clock, Star, Search, CheckCircle, Zap, Brain, Globe } from "lucide-react";
+import { useLearnBlock } from "@/context/LearnBlockContext";
+import useReadArticle from "@/hooks/useReadArticle";
+import useTakeQuiz from "@/hooks/useTakeQuiz";
+import useCreateContent from "@/hooks/useCreateContent";
 
-const mockContent = [
-  {
-    id: 1,
-    title: "Introduction to Blockchain Technology",
-    description: "Learn the fundamentals of blockchain, its history, and core concepts.",
-    pointReward: 200,
-    readTime: "15 min",
-    difficulty: "Beginner",
-    completed: true,
-    category: "Blockchain",
-    icon: Globe,
-  },
-  {
-    id: 2,
-    title: "Smart Contract Development with Solidity",
-    description: "Deep dive into Solidity programming and smart contract best practices.",
-    pointReward: 400,
-    readTime: "30 min",
-    difficulty: "Advanced",
-    completed: false,
-    category: "Development",
-    icon: Brain,
-  },
-  {
-    id: 3,
-    title: "DeFi Protocols and Yield Farming",
-    description: "Understanding decentralized finance protocols and earning strategies.",
-    pointReward: 300,
-    readTime: "20 min",
-    difficulty: "Intermediate",
-    completed: true,
-    category: "DeFi",
-    icon: Zap,
-  },
-  {
-    id: 4,
-    title: "NFT Marketplaces and Digital Ownership",
-    description: "Explore the world of NFTs, marketplaces, and digital asset ownership.",
-    pointReward: 250,
-    readTime: "18 min",
-    difficulty: "Beginner",
-    completed: false,
-    category: "NFTs",
-    icon: Star,
-  },
-  {
-    id: 5,
-    title: "Cryptocurrency Security Best Practices",
-    description: "Essential security measures for protecting your crypto assets.",
-    pointReward: 350,
-    readTime: "25 min",
-    difficulty: "Intermediate",
-    completed: false,
-    category: "Security",
-    icon: Brain,
-  },
-  {
-    id: 6,
-    title: "Layer 2 Scaling Solutions",
-    description: "Understanding Ethereum scaling solutions and their implementations.",
-    pointReward: 300,
-    readTime: "22 min",
-    difficulty: "Advanced",
-    completed: false,
-    category: "Scaling",
-    icon: Zap,
-  },
-]
+// Map categories to icons for consistency
+const categoryIcons = {
+  Blockchain: Globe,
+  Development: Brain,
+  DeFi: Zap,
+  NFTs: Star,
+  Security: Brain,
+  Scaling: Zap,
+};
 
 const ContentLibrary = () => {
-const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedContent, setSelectedContent] = useState(null)
+  const { learnBlocks, completedContent, isConnected } = useLearnBlock();
+  const { readArticle, isReading } = useReadArticle();
+  const { takeQuiz, isTakingQuiz } = useTakeQuiz();
+  const { getContentMetadata } = useCreateContent();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedContent, setSelectedContent] = useState(null);
 
-  const categories = ["All", "Blockchain", "Development", "DeFi", "NFTs", "Security", "Scaling"]
+  const categories = ["All", "Blockchain", "Development", "DeFi", "NFTs", "Security", "Scaling"];
 
-  const filteredContent = mockContent.filter((content) => {
+  const filteredContent = learnBlocks.map((content) => ({
+    ...content,
+    ...getContentMetadata(content.id),
+  })).filter((content) => {
     const matchesSearch =
       content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      content.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === "All" || content.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+      (content.description || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || content.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
       case "Beginner":
-        return "bg-green-500/20 text-green-300 border-green-400/30"
+        return "bg-green-500/20 text-green-300 border-green-400/30";
       case "Intermediate":
-        return "bg-yellow-500/20 text-yellow-300 border-yellow-400/30"
+        return "bg-yellow-500/20 text-yellow-300 border-yellow-400/30";
       case "Advanced":
-        return "bg-red-500/20 text-red-300 border-red-400/30"
+        return "bg-red-500/20 text-red-300 border-red-400/30";
       default:
-        return "bg-gray-500/20 text-gray-300 border-gray-400/30"
+        return "bg-gray-500/20 text-gray-300 border-gray-400/30";
     }
-  }
+  };
+
+  const handleReadArticle = async (contentId) => {
+    const success = await readArticle(contentId);
+    if (success) {
+      setSelectedContent({ ...selectedContent, completed: true });
+    }
+  };
+
+  const handleTakeQuiz = async (contentId) => {
+    const success = await takeQuiz(contentId);
+    if (success) {
+      setSelectedContent({ ...selectedContent, completed: true });
+    }
+  };
 
   if (selectedContent) {
-    const IconComponent = selectedContent.icon
+    const IconComponent = categoryIcons[selectedContent.category] || Globe;
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -127,15 +93,17 @@ const [searchTerm, setSearchTerm] = useState("")
                   <div>
                     <CardTitle className="text-2xl text-slate-100">{selectedContent.title}</CardTitle>
                     <CardDescription className="text-base text-slate-200">
-                      {selectedContent.description}
+                      {selectedContent.description || "No description available."}
                     </CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <Badge className={getDifficultyColor(selectedContent.difficulty)}>{selectedContent.difficulty}</Badge>
+                  <Badge className={getDifficultyColor(selectedContent.difficulty || "Beginner")}>
+                    {selectedContent.difficulty || "Beginner"}
+                  </Badge>
                   <div className="flex items-center space-x-1 text-sm text-slate-300">
                     <Clock className="w-4 h-4" />
-                    <span>{selectedContent.readTime}</span>
+                    <span>{selectedContent.readTime || "15 min"}</span>
                   </div>
                   <div className="flex items-center space-x-1 text-sm text-slate-300">
                     <Star className="w-4 h-4" />
@@ -154,10 +122,7 @@ const [searchTerm, setSearchTerm] = useState("")
           <CardContent className="space-y-6">
             <div className="prose max-w-none text-slate-100">
               <h3 className="text-slate-200">Introduction</h3>
-              <p>
-                This comprehensive guide will take you through the essential concepts and practical applications of the
-                topic. You'll learn through real-world examples and hands-on exercises.
-              </p>
+              <p>{selectedContent.body || "This comprehensive guide will take you through the essential concepts and practical applications of the topic. You'll learn through real-world examples and hands-on exercises."}</p>
 
               <h3 className="text-slate-200">What You'll Learn</h3>
               <ul className="text-slate-200">
@@ -168,28 +133,50 @@ const [searchTerm, setSearchTerm] = useState("")
               </ul>
 
               <h3 className="text-slate-200">Prerequisites</h3>
-              <p>
-                Basic understanding of blockchain technology and cryptocurrency concepts would be helpful but not
-                required for this course.
-              </p>
+              <p>Basic understanding of blockchain technology and cryptocurrency concepts would be helpful but not required for this course.</p>
             </div>
 
             <div className="flex space-x-4">
-              <Button className="bg-gradient-to-r from-emerald-500 to-purple-600 hover:from-emerald-600 hover:to-purple-700 border-0">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Start Reading
+              <Button
+                onClick={() => handleReadArticle(selectedContent.id)}
+                disabled={isReading || !isConnected || selectedContent.completed}
+                className="bg-gradient-to-r from-emerald-500 to-purple-600 hover:from-emerald-600 hover:to-purple-700 border-0"
+              >
+                {isReading ? (
+                  <>
+                    <BookOpen className="w-4 h-4 mr-2 animate-spin" />
+                    Reading...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Start Reading
+                  </>
+                )}
               </Button>
               <Button
+                onClick={() => handleTakeQuiz(selectedContent.id)}
+                disabled={isTakingQuiz || !isConnected || selectedContent.completed}
                 variant="outline"
                 className="bg-slate-800/20 border-slate-600/20 text-emerald-300 hover:bg-emerald-500/20"
               >
-                Take Quiz After Reading
+                {isTakingQuiz ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Take Quiz After Reading
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -227,12 +214,13 @@ const [searchTerm, setSearchTerm] = useState("")
       {/* Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredContent.map((content) => {
-          const IconComponent = content.icon
+          const IconComponent = categoryIcons[content.category] || Globe;
+          const isCompleted = completedContent.includes(content.id.toString());
           return (
             <Card
               key={content.id}
               className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 hover:border-emerald-400/30 transition-all cursor-pointer group hover:shadow-2xl hover:shadow-emerald-500/10"
-              onClick={() => setSelectedContent(content)}
+              onClick={() => setSelectedContent({ ...content, completed: isCompleted })}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -246,17 +234,21 @@ const [searchTerm, setSearchTerm] = useState("")
                       </CardTitle>
                     </div>
                   </div>
-                  {content.completed && <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />}
+                  {isCompleted && <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />}
                 </div>
-                <CardDescription className="line-clamp-3 text-slate-200">{content.description}</CardDescription>
+                <CardDescription className="line-clamp-3 text-slate-200">
+                  {content.description || "No description available."}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Badge className={getDifficultyColor(content.difficulty)}>{content.difficulty}</Badge>
+                    <Badge className={getDifficultyColor(content.difficulty || "Beginner")}>
+                      {content.difficulty || "Beginner"}
+                    </Badge>
                     <div className="flex items-center space-x-1 text-sm text-slate-300">
                       <Clock className="w-3 h-3" />
-                      <span>{content.readTime}</span>
+                      <span>{content.readTime || "15 min"}</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-1 text-sm font-medium text-slate-300">
@@ -266,11 +258,11 @@ const [searchTerm, setSearchTerm] = useState("")
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ContentLibrary
+export default ContentLibrary;

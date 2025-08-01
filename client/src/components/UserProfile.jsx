@@ -53,6 +53,7 @@ const UserProfile = ({ userProfile, userAddress }) => {
   return (
     <div className="space-y-6">
       {/* Profile Header */}
+
       <Card className="bg-gradient-to-r from-emerald-500/10 to-sky-500/10 border border-emerald-400/20 backdrop-blur-xl text-white">
         <CardHeader>
           <div className="flex items-center space-x-4">
