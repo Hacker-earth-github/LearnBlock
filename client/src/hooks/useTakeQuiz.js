@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
-import { useLearnBlock } from '@/context/LearnBlockContext';
-import { toast } from 'react-toastify';
+import { useCallback, useState } from "react";
+import { parseUnits } from "ethers"; // For ethers v6
+import { useLearnBlock } from "@/context/LearnBlockContext";
+import { toast } from "react-toastify";
 
 const useTakeQuiz = () => {
   const { contract, address, isConnected, refreshUserProfile } = useLearnBlock();
@@ -10,18 +11,18 @@ const useTakeQuiz = () => {
   const takeQuiz = useCallback(
     async (contentId) => {
       if (!isConnected || !address) {
-        setError('Wallet not connected');
-        toast.error('Please connect your wallet to take the quiz.', {
-          position: 'top-right',
+        setError("Wallet not connected");
+        toast.error("Please connect your wallet to take the quiz.", {
+          position: "top-right",
           autoClose: 5000,
         });
         return false;
       }
 
       if (!contract) {
-        setError('Contract not initialized');
-        toast.error('Smart contract not initialized.', {
-          position: 'top-right',
+        setError("Contract not initialized");
+        toast.error("Smart contract not initialized.", {
+          position: "top-right",
           autoClose: 5000,
         });
         return false;
@@ -31,20 +32,20 @@ const useTakeQuiz = () => {
       setError(null);
 
       try {
-        const tx = await contract.takeQuiz(contentId);
+        const tx = await contract.takeQuiz(parseUnits(contentId.toString(), 0));
         await tx.wait();
-        toast.success('Quiz completed successfully!', {
-          position: 'top-right',
+        toast.success("Quiz completed successfully! Points claimed.", {
+          position: "top-right",
           autoClose: 5000,
         });
-        await refreshUserProfile(); 
+        await refreshUserProfile();
         return true;
       } catch (error) {
-        console.error('Error taking quiz:', error);
-        const errorMsg = error.reason || 'Failed to complete quiz. Please try again.';
+        console.error("Error taking quiz:", error);
+        const errorMsg = error.reason || "Failed to complete quiz. Please try again.";
         setError(errorMsg);
         toast.error(errorMsg, {
-          position: 'top-right',
+          position: "top-right",
           autoClose: 5000,
         });
         return false;

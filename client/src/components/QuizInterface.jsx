@@ -1,105 +1,114 @@
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Trophy, Clock, Target, Zap } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle, XCircle, Trophy, Clock, Target, Zap } from "lucide-react";
+import { useLearnBlock } from "@/context/LearnBlockContext";
+import useTakeQuiz from "@/hooks/useTakeQuiz";
 
+const QuizInterface = ({ contentId = "1" }) => {
+  const { isConnected, address, getContent, getQuizQuestions } = useLearnBlock();
+  const { takeQuiz, isTakingQuiz, error } = useTakeQuiz();
+  const [quizData, setQuizData] = useState(null);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
 
-const mockQuiz = {
-  contentId: 1,
-  title: "Blockchain Fundamentals Quiz",
-  description: "Test your knowledge of blockchain basics",
-  pointReward: 300,
-  questions: [
-    {
-      question: "What is a blockchain?",
-      options: [
-        "A centralized database",
-        "A distributed ledger technology",
-        "A type of cryptocurrency",
-        "A programming language",
-      ],
-      correctAnswer: 1,
-    },
-    {
-      question: "What is the primary purpose of mining in blockchain?",
-      options: [
-        "To create new cryptocurrencies",
-        "To validate transactions and secure the network",
-        "To store data efficiently",
-        "To reduce transaction fees",
-      ],
-      correctAnswer: 1,
-    },
-    {
-      question: "What makes blockchain transactions immutable?",
-      options: [
-        "Government regulations",
-        "Cryptographic hashing and consensus mechanisms",
-        "High transaction fees",
-        "Limited network access",
-      ],
-      correctAnswer: 1,
-    },
-    {
-      question: "What is a smart contract?",
-      options: [
-        "A legal document",
-        "A self-executing contract with terms directly written into code",
-        "A type of cryptocurrency wallet",
-        "A blockchain mining algorithm",
-      ],
-      correctAnswer: 1,
-    },
-    {
-      question: "Which consensus mechanism does Bitcoin use?",
-      options: ["Proof of Stake", "Proof of Work", "Delegated Proof of Stake", "Proof of Authority"],
-      correctAnswer: 1,
-    },
-  ],
-}
-
-const QuizInterface = () => {
-const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswers, setSelectedAnswers] = useState([])
-  const [showResults, setShowResults] = useState(false)
-  const [quizStarted, setQuizStarted] = useState(false)
+  useEffect(() => {
+    const fetchQuizData = async () => {
+      try {
+        const content = await getContent(contentId);
+        if (!content) {
+          throw new Error("Content not found");
+        }
+        const questions = getQuizQuestions(contentId);
+        setQuizData({
+          contentId,
+          title: content.title || "Quiz",
+          description: "Test your knowledge",
+          pointReward: content.pointReward || "0",
+          questions: questions.length > 0 ? questions : [], // Fallback to empty array
+        });
+      } catch (err) {
+        console.error("Error fetching quiz data:", err);
+        setQuizData({ contentId, title: "Quiz", description: "Test your knowledge", pointReward: "0", questions: [] });
+      }
+    };
+    fetchQuizData();
+  }, [contentId, getContent, getQuizQuestions]);
 
   const handleAnswerSelect = (answerIndex) => {
-    const newAnswers = [...selectedAnswers]
-    newAnswers[currentQuestion] = answerIndex
-    setSelectedAnswers(newAnswers)
-  }
+    const newAnswers = [...selectedAnswers];
+    newAnswers[currentQuestion] = answerIndex;
+    setSelectedAnswers(newAnswers);
+  };
 
   const handleNext = () => {
-    if (currentQuestion < mockQuiz.questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+    if (currentQuestion < quizData.questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
     } else {
-      setShowResults(true)
+      setShowResults(true);
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1)
+      setCurrentQuestion(currentQuestion - 1);
     }
-  }
+  };
 
   const calculateScore = () => {
-    let correct = 0
+    let correct = 0;
     selectedAnswers.forEach((answer, index) => {
-      if (answer === mockQuiz.questions[index].correctAnswer) {
-        correct++
+      if (answer === quizData.questions[index].correctAnswer) {
+        correct++;
       }
-    })
-    return correct
+    });
+    return correct;
+  };
+
+  const handleClaimPoints = async () => {
+    if (selectedAnswers.length !== quizData.questions.length) {
+      alert("Please answer all questions before claiming points.");
+      return;
+    }
+    const success = await takeQuiz(quizData.contentId);
+    if (success) {
+      setQuizStarted(false);
+      setShowResults(false);
+      setCurrentQuestion(0);
+      setSelectedAnswers([]);
+    }
+  };
+
+  if (!isConnected || !address) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Please connect your wallet to take the quiz.</AlertDescription>
+      </Alert>
+    );
   }
 
-  const score = calculateScore()
-  const percentage = Math.round((score / mockQuiz.questions.length) * 100)
+  if (!quizData) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Loading quiz data...</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (quizData.questions.length === 0) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>No questions available for this quiz.</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (!quizStarted) {
     return (
@@ -109,17 +118,22 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
             <div className="w-20 h-20 bg-gradient-to-r from-emerald-500 via-purple-500 to-sky-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Target className="w-10 h-10 text-white" />
             </div>
-            <CardTitle className="text-2xl text-slate-100">{mockQuiz.title}</CardTitle>
-            <CardDescription className="text-base text-slate-200">{mockQuiz.description}</CardDescription>
+            <CardTitle className="text-2xl text-slate-100">{quizData.title}</CardTitle>
+            <CardDescription className="text-base text-slate-200">{quizData.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="space-y-2">
-                <div className="text-2xl font-bold text-slate-300">{mockQuiz.questions.length}</div>
+                <div className="text-2xl font-bold text-slate-300">{quizData.questions.length}</div>
                 <div className="text-sm text-slate-400">Questions</div>
               </div>
               <div className="space-y-2">
-                <div className="text-2xl font-bold text-green-300">{mockQuiz.pointReward}</div>
+                <div className="text-2xl font-bold text-green-300">{quizData.pointReward}</div>
                 <div className="text-sm text-green-400">Points</div>
               </div>
               <div className="space-y-2">
@@ -149,10 +163,13 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (showResults) {
+    const score = calculateScore();
+    const percentage = Math.round((score / quizData.questions.length) * 100);
+
     return (
       <div className="max-w-2xl mx-auto">
         <Card className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 text-white">
@@ -170,10 +187,15 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
             </div>
             <CardTitle className="text-2xl text-slate-100">Quiz Complete!</CardTitle>
             <CardDescription className="text-slate-200">
-              You scored {score} out of {mockQuiz.questions.length} questions correctly
+              You scored {score} out of {quizData.questions.length} questions correctly
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="text-center">
               <div
                 className={`text-4xl font-bold mb-2 ${
@@ -192,7 +214,7 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
               </div>
               <div className="text-center p-4 bg-emerald-500/10 border border-emerald-400/20 rounded-lg">
                 <div className="text-2xl font-bold text-emerald-400">
-                  {Math.round((score / mockQuiz.questions.length) * mockQuiz.pointReward)}
+                  {Math.round((score / quizData.questions.length) * quizData.pointReward)}
                 </div>
                 <div className="text-sm text-emerald-300">Points Earned</div>
               </div>
@@ -200,7 +222,7 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
 
             <div className="space-y-3">
               <h3 className="font-semibold text-slate-100">Review Your Answers:</h3>
-              {mockQuiz.questions.map((question, index) => (
+              {quizData.questions.map((question, index) => (
                 <div key={index} className="flex items-center space-x-3 p-3 bg-slate-700/10 rounded-lg">
                   {selectedAnswers[index] === question.correctAnswer ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -221,28 +243,42 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
             <div className="flex space-x-4">
               <Button
                 onClick={() => {
-                  setQuizStarted(false)
-                  setShowResults(false)
-                  setCurrentQuestion(0)
-                  setSelectedAnswers([])
+                  setQuizStarted(false);
+                  setShowResults(false);
+                  setCurrentQuestion(0);
+                  setSelectedAnswers([]);
                 }}
                 variant="outline"
                 className="flex-1 bg-slate-800/20 border-slate-600/20 text-emerald-300 hover:bg-emerald-500/20"
               >
                 Take Another Quiz
               </Button>
-              <Button className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border-0">
-                Claim Points
+              <Button
+                onClick={handleClaimPoints}
+                disabled={isTakingQuiz}
+                className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border-0"
+              >
+                {isTakingQuiz ? (
+                  <>
+                    <Zap className="w-4 h-4 mr-2 animate-spin" />
+                    Claiming...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Claim Points
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
-  const currentQ = mockQuiz.questions[currentQuestion]
-  const progress = ((currentQuestion + 1) / mockQuiz.questions.length) * 100
+  const currentQ = quizData.questions[currentQuestion];
+  const progress = ((currentQuestion + 1) / quizData.questions.length) * 100;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -251,9 +287,9 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-slate-100">
-                Question {currentQuestion + 1} of {mockQuiz.questions.length}
+                Question {currentQuestion + 1} of {quizData.questions.length}
               </CardTitle>
-              <CardDescription className="text-slate-200">{mockQuiz.title}</CardDescription>
+              <CardDescription className="text-slate-200">{quizData.title}</CardDescription>
             </div>
             <Badge
               variant="outline"
@@ -266,6 +302,11 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
           <Progress value={progress} className="h-2" />
         </CardHeader>
         <CardContent className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <div>
             <h3 className="text-lg font-semibold mb-4 text-slate-100">{currentQ.question}</h3>
             <RadioGroup
@@ -300,14 +341,13 @@ const [currentQuestion, setCurrentQuestion] = useState(0)
               disabled={selectedAnswers[currentQuestion] === undefined}
               className="bg-gradient-to-r from-emerald-500 to-purple-600 hover:from-emerald-600 hover:to-purple-700 border-0 disabled:opacity-50"
             >
-              {currentQuestion === mockQuiz.questions.length - 1 ? "Finish Quiz" : "Next"}
+              {currentQuestion === quizData.questions.length - 1 ? "Finish Quiz" : "Next"}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
+};
 
-}
-
-export default QuizInterface
+export default QuizInterface;

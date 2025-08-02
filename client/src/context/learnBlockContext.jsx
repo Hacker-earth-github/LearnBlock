@@ -36,6 +36,7 @@ export const LearnBlockProvider = ({ children }) => {
   const [completedContent, setCompletedContent] = useState([]);
   const [unredeemedPoints, setUnredeemedPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState({}); 
 
   const getContent = useCallback(
     async (contentId) => {
@@ -43,6 +44,7 @@ export const LearnBlockProvider = ({ children }) => {
       try {
         const content = await readOnlyContract.getContent(contentId);
         return {
+          id: contentId,
           title: content.title,
           body: content.body,
           sources: content.sources,
@@ -72,6 +74,27 @@ export const LearnBlockProvider = ({ children }) => {
       console.error("Error loading content IDs:", error);
     }
   }, [readOnlyContract, getContent]);
+
+  const addQuizQuestionToState = useCallback(
+    (contentId, questionData) => {
+      setQuizQuestions((prev) => ({
+        ...prev,
+        [contentId]: [...(prev[contentId] || []), {
+          question: questionData.question,
+          options: questionData.options,
+          correctAnswer: questionData.correctAnswerIndex,
+        }],
+      }));
+    },
+    []
+  );
+
+  const getQuizQuestions = useCallback(
+    (contentId) => {
+      return quizQuestions[contentId] || [];
+    },
+    [quizQuestions]
+  );
 
   const refreshUserProfile = useCallback(async () => {
     if (!address || !readOnlyContract) {
@@ -137,19 +160,41 @@ export const LearnBlockProvider = ({ children }) => {
 
   useEffect(() => {
     if (isConnected && address && !isLoading) {
-      console.log(
-        "Initial trigger of refreshUserProfile for address:",
-        address
-      );
+      console.log("Initial trigger of refreshUserProfile for address:", address);
       refreshUserProfile();
     }
-  }, [isConnected, address]);
+  }, [isConnected, address, isLoading, refreshUserProfile]);
 
   useEffect(() => {
     if (readOnlyContract) {
       loadAllContentIds();
     }
   }, [readOnlyContract, loadAllContentIds]);
+
+  useEffect(() => {
+    if (!contract) return;
+    const handleContentRegistered = () => {
+      console.log("ContentRegistered event detected, refreshing content list");
+      loadAllContentIds();
+    };
+    contract.on("ContentRegistered", handleContentRegistered);
+    return () => contract.off("ContentRegistered", handleContentRegistered);
+  }, [contract, loadAllContentIds]);
+
+  // Listen for QuizQuestionAdded events (assuming contract emits this)
+  useEffect(() => {
+    if (!contract) return;
+    const handleQuizQuestionAdded = (contentId, question, options, correctAnswerIndex) => {
+      console.log("QuizQuestionAdded event detected for contentId:", contentId.toString());
+      addQuizQuestionToState(contentId.toString(), {
+        question,
+        options,
+        correctAnswerIndex: correctAnswerIndex.toNumber(),
+      });
+    };
+    contract.on("QuizQuestionAdded", handleQuizQuestionAdded);
+    return () => contract.off("QuizQuestionAdded", handleQuizQuestionAdded);
+  }, [contract, addQuizQuestionToState]);
 
   const contextValue = {
     learnBlocks,
@@ -162,6 +207,9 @@ export const LearnBlockProvider = ({ children }) => {
     registerUser: handleUserRegistration,
     refreshUserProfile,
     getContent,
+    loadAllContentIds,
+    addQuizQuestionToState,
+    getQuizQuestions,
     isLoading: isLoading || isRegistering || isCheckingRegistration,
     isRegistering,
     isCheckingRegistration,

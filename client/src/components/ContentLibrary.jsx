@@ -9,7 +9,6 @@ import useReadArticle from "@/hooks/useReadArticle";
 import useTakeQuiz from "@/hooks/useTakeQuiz";
 import useCreateContent from "@/hooks/useCreateContent";
 
-// Map categories to icons for consistency
 const categoryIcons = {
   Blockchain: Globe,
   Development: Brain,
@@ -30,13 +29,19 @@ const ContentLibrary = () => {
 
   const categories = ["All", "Blockchain", "Development", "DeFi", "NFTs", "Security", "Scaling"];
 
-  const filteredContent = learnBlocks.map((content) => ({
-    ...content,
-    ...getContentMetadata(content.id),
-  })).filter((content) => {
+  const filteredContent = learnBlocks.map((content) => {
+    const metadata = getContentMetadata(content.id);
+    return {
+      ...content,
+      description: metadata.description || content.description || "No description available.",
+      category: metadata.category || "Blockchain",
+      difficulty: metadata.difficulty || "Beginner",
+      readTime: metadata.readTime || "15 min",
+    };
+  }).filter((content) => {
     const matchesSearch =
       content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (content.description || "").toLowerCase().includes(searchTerm.toLowerCase());
+      content.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "All" || content.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -44,13 +49,13 @@ const ContentLibrary = () => {
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
       case "Beginner":
-        return "bg-green-500/20 text-green-300 border-green-400/30";
+        return "bg-green-100 text-green-800 border-green-300";
       case "Intermediate":
-        return "bg-yellow-500/20 text-yellow-300 border-yellow-400/30";
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "Advanced":
-        return "bg-red-500/20 text-red-300 border-red-400/30";
+        return "bg-red-100 text-red-800 border-red-300";
       default:
-        return "bg-gray-500/20 text-gray-300 border-gray-400/30";
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -76,43 +81,43 @@ const ContentLibrary = () => {
           <Button
             variant="outline"
             onClick={() => setSelectedContent(null)}
-            className="mb-4 bg-slate-800/20 border-slate-600/20 text-emerald-300 hover:bg-emerald-500/20"
+            className="mb-4 bg-white border-gray-300 text-blue-600 hover:bg-blue-50"
           >
             ← Back to Library
           </Button>
         </div>
 
-        <Card className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 text-white">
+        <Card className="bg-gray-50 border-gray-200 text-gray-900">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl text-slate-100">{selectedContent.title}</CardTitle>
-                    <CardDescription className="text-base text-slate-200">
-                      {selectedContent.description || "No description available."}
+                    <CardTitle className="text-2xl text-gray-900">{selectedContent.title}</CardTitle>
+                    <CardDescription className="text-base text-gray-600">
+                      {selectedContent.description}
                     </CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <Badge className={getDifficultyColor(selectedContent.difficulty || "Beginner")}>
-                    {selectedContent.difficulty || "Beginner"}
+                  <Badge className={getDifficultyColor(selectedContent.difficulty)}>
+                    {selectedContent.difficulty}
                   </Badge>
-                  <div className="flex items-center space-x-1 text-sm text-slate-300">
+                  <div className="flex items-center space-x-1 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
-                    <span>{selectedContent.readTime || "15 min"}</span>
+                    <span>{selectedContent.readTime}</span>
                   </div>
-                  <div className="flex items-center space-x-1 text-sm text-slate-300">
+                  <div className="flex items-center space-x-1 text-sm text-gray-600">
                     <Star className="w-4 h-4" />
                     <span>{selectedContent.pointReward} points</span>
                   </div>
                 </div>
               </div>
               {selectedContent.completed && (
-                <Badge className="bg-green-500/20 text-green-300 border-green-400/30">
+                <Badge className="bg-green-100 text-green-800 border-green-300">
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Completed
                 </Badge>
@@ -120,19 +125,19 @@ const ContentLibrary = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="prose max-w-none text-slate-100">
-              <h3 className="text-slate-200">Introduction</h3>
+            <div className="prose max-w-none text-gray-800">
+              <h3 className="text-gray-700">Introduction</h3>
               <p>{selectedContent.body || "This comprehensive guide will take you through the essential concepts and practical applications of the topic. You'll learn through real-world examples and hands-on exercises."}</p>
 
-              <h3 className="text-slate-200">What You'll Learn</h3>
-              <ul className="text-slate-200">
+              <h3 className="text-gray-700">What You'll Learn</h3>
+              <ul className="text-gray-700">
                 <li>Core concepts and terminology</li>
                 <li>Practical implementation strategies</li>
                 <li>Best practices and common pitfalls</li>
                 <li>Real-world use cases and examples</li>
               </ul>
 
-              <h3 className="text-slate-200">Prerequisites</h3>
+              <h3 className="text-gray-700">Prerequisites</h3>
               <p>Basic understanding of blockchain technology and cryptocurrency concepts would be helpful but not required for this course.</p>
             </div>
 
@@ -140,7 +145,7 @@ const ContentLibrary = () => {
               <Button
                 onClick={() => handleReadArticle(selectedContent.id)}
                 disabled={isReading || !isConnected || selectedContent.completed}
-                className="bg-gradient-to-r from-emerald-500 to-purple-600 hover:from-emerald-600 hover:to-purple-700 border-0"
+                className="bg-blue-500 hover:bg-blue-600 text-white border-0"
               >
                 {isReading ? (
                   <>
@@ -157,8 +162,7 @@ const ContentLibrary = () => {
               <Button
                 onClick={() => handleTakeQuiz(selectedContent.id)}
                 disabled={isTakingQuiz || !isConnected || selectedContent.completed}
-                variant="outline"
-                className="bg-slate-800/20 border-slate-600/20 text-emerald-300 hover:bg-emerald-500/20"
+                className="bg-white border-gray-300 text-blue-600 hover:bg-blue-50"
               >
                 {isTakingQuiz ? (
                   <>
@@ -184,12 +188,12 @@ const ContentLibrary = () => {
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Search content..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800/20 backdrop-blur-xl border-slate-600/20 text-slate-100 placeholder:text-slate-400"
+            className="pl-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <div className="flex space-x-2 overflow-x-auto">
@@ -201,8 +205,8 @@ const ContentLibrary = () => {
               onClick={() => setSelectedCategory(category)}
               className={
                 selectedCategory === category
-                  ? "bg-gradient-to-r from-emerald-500 to-purple-600 border-0"
-                  : "bg-slate-800/20 border-slate-600/20 text-emerald-300 hover:bg-emerald-500/20"
+                  ? "bg-blue-500 text-white border-0"
+                  : "bg-white border-gray-300 text-blue-600 hover:bg-blue-50"
               }
             >
               {category}
@@ -219,39 +223,39 @@ const ContentLibrary = () => {
           return (
             <Card
               key={content.id}
-              className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 hover:border-emerald-400/30 transition-all cursor-pointer group hover:shadow-2xl hover:shadow-emerald-500/10"
+              className="bg-gray-50 border-gray-200 hover:border-blue-300 transition-all cursor-pointer group hover:shadow-2xl hover:shadow-blue-200"
               onClick={() => setSelectedContent({ ...content, completed: isCompleted })}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-purple-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                       <IconComponent className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-lg line-clamp-2 text-slate-100 group-hover:text-slate-200">
+                      <CardTitle className="text-lg line-clamp-2 text-gray-900 group-hover:text-blue-600">
                         {content.title}
                       </CardTitle>
                     </div>
                   </div>
-                  {isCompleted && <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />}
+                  {isCompleted && <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />}
                 </div>
-                <CardDescription className="line-clamp-3 text-slate-200">
-                  {content.description || "No description available."}
+                <CardDescription className="line-clamp-3 text-gray-600">
+                  {content.description}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Badge className={getDifficultyColor(content.difficulty || "Beginner")}>
-                      {content.difficulty || "Beginner"}
+                    <Badge className={getDifficultyColor(content.difficulty)}>
+                      {content.difficulty}
                     </Badge>
-                    <div className="flex items-center space-x-1 text-sm text-slate-300">
+                    <div className="flex items-center space-x-1 text-sm text-gray-600">
                       <Clock className="w-3 h-3" />
-                      <span>{content.readTime || "15 min"}</span>
+                      <span>{content.readTime}</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1 text-sm font-medium text-slate-300">
+                  <div className="flex items-center space-x-1 text-sm font-medium text-gray-600">
                     <Star className="w-4 h-4" />
                     <span>{content.pointReward}</span>
                   </div>
