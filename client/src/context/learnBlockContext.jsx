@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import useContractInstance from "../hooks/useContractInstance";
@@ -27,7 +28,7 @@ export const LearnBlockProvider = ({ children }) => {
     isPendingRegistration,
   } = useRegister();
 
-  // State
+  // State with persistence
   const [learnBlocks, setLearnBlocks] = useState([]);
   const [allContentIds, setAllContentIds] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
@@ -36,7 +37,10 @@ export const LearnBlockProvider = ({ children }) => {
   const [completedContent, setCompletedContent] = useState([]);
   const [unredeemedPoints, setUnredeemedPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState({}); 
+  const [quizQuestions, setQuizQuestions] = useState({});
+
+  // Debounce ref
+  const refreshTimeout = useRef(null);
 
   const getContent = useCallback(
     async (contentId) => {
@@ -97,38 +101,22 @@ export const LearnBlockProvider = ({ children }) => {
   );
 
   const refreshUserProfile = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      console.log("Skipping refresh: No address or readOnlyContract", {
-        address,
-        readOnlyContract,
-      });
-      return;
-    }
+    if (!address || !readOnlyContract || isLoading) return;
+    if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+
     setIsLoading(true);
     console.log("Starting refreshUserProfile for address:", address);
     try {
       const profile = await getUserProfile();
       console.log("Fetched user profile:", profile);
-      setUserProfile(profile || { userId: "0", articlesRead: "0" });
+      setUserProfile((prev) => profile || prev || { userId: "0", articlesRead: "0" });
       const points = await getUnredeemedPoints();
       console.log("Fetched unredeemed points:", points);
-      setUnredeemedPoints(points || "0");
+      setUnredeemedPoints(points || unredeemedPoints || "0");
       const isRegistered = await checkRegistration();
       setIsUserRegistered(isRegistered);
-      if (isRegistered) setIsPendingRegistration(false);
-
-      const badgeIds = await getUserBadgeIds();
-      setUserBadgeIds(badgeIds || []);
-      const completed = await getUserCompletedContent();
-      const parsedCompleted =
-        completed && typeof completed === "object" && !Array.isArray(completed)
-          ? Object.values(completed)
-          : completed || [];
-      setCompletedContent(parsedCompleted);
     } catch (error) {
-      console.error("Critical error in refreshUserProfile:", error);
-      setUserProfile({ userId: "0", articlesRead: "0" });
-      setUnredeemedPoints("0");
+      console.error("Error in refreshUserProfile:", error);
     } finally {
       setIsLoading(false);
     }
@@ -138,8 +126,8 @@ export const LearnBlockProvider = ({ children }) => {
     getUserProfile,
     getUnredeemedPoints,
     checkRegistration,
-    getUserBadgeIds,
-    getUserCompletedContent,
+    isLoading,
+    unredeemedPoints,
   ]);
 
   const handleUserRegistration = useCallback(async () => {
@@ -150,17 +138,13 @@ export const LearnBlockProvider = ({ children }) => {
       }
       return success;
     } catch (error) {
-      console.error(
-        "Error in handleUserRegistration:",
-        JSON.stringify(error, null, 2)
-      );
+      console.error("Error in handleUserRegistration:", JSON.stringify(error, null, 2));
       return false;
     }
   }, [registerUser, refreshUserProfile]);
 
   useEffect(() => {
     if (isConnected && address && !isLoading) {
-      console.log("Initial trigger of refreshUserProfile for address:", address);
       refreshUserProfile();
     }
   }, [isConnected, address, isLoading, refreshUserProfile]);
@@ -173,28 +157,50 @@ export const LearnBlockProvider = ({ children }) => {
 
   useEffect(() => {
     if (!contract) return;
+
     const handleContentRegistered = () => {
       console.log("ContentRegistered event detected, refreshing content list");
       loadAllContentIds();
     };
     contract.on("ContentRegistered", handleContentRegistered);
-    return () => contract.off("ContentRegistered", handleContentRegistered);
-  }, [contract, loadAllContentIds]);
 
-  // Listen for QuizQuestionAdded events (assuming contract emits this)
-  useEffect(() => {
-    if (!contract) return;
-    const handleQuizQuestionAdded = (contentId, question, options, correctAnswerIndex) => {
-      console.log("QuizQuestionAdded event detected for contentId:", contentId.toString());
-      addQuizQuestionToState(contentId.toString(), {
-        question,
-        options,
-        correctAnswerIndex: correctAnswerIndex.toNumber(),
+    // Use contract.filters for event topics
+    const articleReadFilter = contract.filters.ArticleRead();
+    const quizTakenFilter = contract.filters.QuizTaken();
+
+    const handleArticleRead = (userAddress, contentId) => {
+      console.log("ArticleRead event detected:", {
+        userAddress: userAddress.toLowerCase(),
+        address: address?.toLowerCase(),
+        contentId: contentId.toString(),
       });
+      if (address && userAddress.toLowerCase() === address.toLowerCase()) {
+        refreshTimeout.current = setTimeout(refreshUserProfile, 500);
+      }
     };
-    contract.on("QuizQuestionAdded", handleQuizQuestionAdded);
-    return () => contract.off("QuizQuestionAdded", handleQuizQuestionAdded);
-  }, [contract, addQuizQuestionToState]);
+
+    const handleQuizTaken = (userAddress, contentId, points) => {
+      console.log("QuizTaken event detected:", {
+        userAddress: userAddress.toLowerCase(),
+        address: address?.toLowerCase(),
+        contentId: contentId.toString(),
+        points: points.toString(),
+      });
+      if (address && userAddress.toLowerCase() === address.toLowerCase()) {
+        refreshTimeout.current = setTimeout(refreshUserProfile, 500);
+      }
+    };
+
+    contract.on(articleReadFilter, handleArticleRead);
+    contract.on(quizTakenFilter, handleQuizTaken);
+
+    return () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+      contract.off("ContentRegistered", handleContentRegistered);
+      contract.off(articleReadFilter, handleArticleRead);
+      contract.off(quizTakenFilter, handleQuizTaken);
+    };
+  }, [contract, address, refreshUserProfile, loadAllContentIds, readOnlyContract]);
 
   const contextValue = {
     learnBlocks,

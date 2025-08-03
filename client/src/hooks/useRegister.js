@@ -11,16 +11,12 @@ const useRegister = () => {
   const [isPendingRegistration, setIsPendingRegistration] = useState(false);
 
   const checkRegistration = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      return false;
-    }
+    if (!address || !readOnlyContract) return false;
     try {
       setIsCheckingRegistration(true);
       setRegistrationError(null);
       const isRegistered = await readOnlyContract.isUserRegistered(address);
-      if (isRegistered) {
-        setIsPendingRegistration(false); // Clear pending state if registered
-      }
+      if (isRegistered) setIsPendingRegistration(false);
       return isRegistered;
     } catch (error) {
       console.error("Error checking registration:", error);
@@ -66,16 +62,9 @@ const useRegister = () => {
   }, [readOnlyContract]);
 
   const registerUser = useCallback(async () => {
-    console.log("registerUser inputs:", { address, isConnected, contract });
     if (!address || !isConnected || !contract) {
-      setRegistrationError(
-        new Error("Wallet not connected or contract not available")
-      );
-      console.error("Validation failed:", { address, isConnected, contract });
-      return {
-        success: false,
-        error: "Wallet not connected or contract not available",
-      };
+      setRegistrationError(new Error("Wallet not connected or contract not available"));
+      return { success: false, error: "Wallet not connected or contract not available" };
     }
 
     try {
@@ -83,7 +72,6 @@ const useRegister = () => {
       setRegistrationError(null);
 
       const isAlreadyRegistered = await checkRegistration();
-      console.log("isAlreadyRegistered:", isAlreadyRegistered);
       if (isAlreadyRegistered) {
         setIsPendingRegistration(false);
         return { success: true };
@@ -91,27 +79,20 @@ const useRegister = () => {
 
       const contentExists = await checkContentExists();
       if (!contentExists) {
-        console.warn("No content available, allowing pending registration");
         setIsPendingRegistration(true);
-        return { success: true, pending: true }; // Treat as successful for UI purposes
+        return { success: true, pending: true };
       }
 
       const contentId = await getValidContentId();
       if (!contentId) {
-        console.warn(
-          "No valid content ID found, allowing pending registration"
-        );
         setIsPendingRegistration(true);
-        return { success: true, pending: true }; // Treat as successful for UI purposes
+        return { success: true, pending: true };
       }
 
-      console.log(`Calling contract.readArticle with contentId: ${contentId}`);
       const tx = await contract.readArticle(contentId);
-      console.log("Transaction sent:", tx.hash);
-      const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt);
+      await tx.wait();
       setIsPendingRegistration(false);
-      return { success: true, receipt };
+      return { success: true };
     } catch (error) {
       console.error("Error registering user:", JSON.stringify(error, null, 2));
       setRegistrationError(error);
@@ -119,30 +100,14 @@ const useRegister = () => {
     } finally {
       setIsRegistering(false);
     }
-  }, [
-    address,
-    isConnected,
-    contract,
-    checkRegistration,
-    checkContentExists,
-    getValidContentId,
-  ]);
+  }, [address, isConnected, contract, checkRegistration, checkContentExists, getValidContentId]);
 
   const getUserProfile = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      console.log("getUserProfile: No address or readOnlyContract", {
-        address,
-        readOnlyContract,
-      });
-      return null;
-    }
-
+    if (!address || !readOnlyContract) return null;
     try {
-      console.log("Attempting to fetch user profile for address:", address);
       const profile = await readOnlyContract.getUserProfile(address);
-      console.log("Raw profile data from contract:", profile); // Log raw data
       return {
-        userId: profile.userId?.toString() || "0", // Ensure conversion
+        userId: profile.userId?.toString() || "0",
         articlesRead: profile.articlesRead?.toString() || "0",
         quizzesTaken: profile.quizzesTaken?.toString() || "0",
         totalPointsEarned: profile.totalPointsEarned?.toString() || "0",
@@ -157,24 +122,18 @@ const useRegister = () => {
   }, [address, readOnlyContract]);
 
   const getUnredeemedPoints = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      return 0;
-    }
-
+    if (!address || !readOnlyContract) return "0";
     try {
       const points = await readOnlyContract.getUnredeemedPoints(address);
       return points.toString();
     } catch (error) {
       console.error("Error getting unredeemed points:", error);
-      return 0;
+      return "0";
     }
   }, [address, readOnlyContract]);
 
   const getUserBadgeIds = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      return [];
-    }
-
+    if (!address || !readOnlyContract) return [];
     try {
       const badgeIds = await readOnlyContract.getUserBadgeIds(address);
       return badgeIds.map((id) => id.toString());
@@ -185,13 +144,10 @@ const useRegister = () => {
   }, [address, readOnlyContract]);
 
   const getUserCompletedContent = useCallback(async () => {
-    if (!address || !readOnlyContract) {
-      return [];
-    }
-
+    if (!address || !readOnlyContract) return [];
     try {
       const completed = await readOnlyContract.getUserCompletedContent(address);
-      return completed;
+      return completed.map((id) => id.toString());
     } catch (error) {
       console.error("Error getting completed content:", error);
       return [];
