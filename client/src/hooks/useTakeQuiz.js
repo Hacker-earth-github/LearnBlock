@@ -1,60 +1,42 @@
-import { useCallback, useState } from "react";
-import { parseUnits } from "ethers"; // For ethers v6
+// hooks/useTakeQuiz.js
+import { useState } from "react";
 import { useLearnBlock } from "@/context/LearnBlockContext";
-import { toast } from "react-toastify";
 
 const useTakeQuiz = () => {
-  const { contract, address, isConnected, refreshUserProfile } = useLearnBlock();
+  const { contract, address } = useLearnBlock();
   const [isTakingQuiz, setIsTakingQuiz] = useState(false);
   const [error, setError] = useState(null);
 
-  const takeQuiz = useCallback(
-    async (contentId) => {
-      if (!isConnected || !address) {
-        setError("Wallet not connected");
-        toast.error("Please connect your wallet to take the quiz.", {
-          position: "top-right",
-          autoClose: 5000,
-        });
-        return false;
-      }
+  const takeQuiz = async (contentId) => {
+    if (!contract || !address) {
+      setError("Wallet not connected or contract not initialized.");
+      return false;
+    }
 
-      if (!contract) {
-        setError("Contract not initialized");
-        toast.error("Smart contract not initialized.", {
-          position: "top-right",
-          autoClose: 5000,
-        });
-        return false;
-      }
-
-      setIsTakingQuiz(true);
+    setIsTakingQuiz(true);
+    try {
+      console.log("Taking quiz for contentId:", contentId, "by address:", address);
+      const tx = await contract.takeQuiz(contentId, {
+        from: address,
+        gasLimit: 300000, // Manual gas limit as a workaround
+      });
+      console.log("Transaction sent:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("Transaction confirmed:", receipt);
       setError(null);
-
-      try {
-        const tx = await contract.takeQuiz(parseUnits(contentId.toString(), 0));
-        await tx.wait();
-        toast.success("Quiz completed successfully! Points claimed.", {
-          position: "top-right",
-          autoClose: 5000,
-        });
-        await refreshUserProfile();
-        return true;
-      } catch (error) {
-        console.error("Error taking quiz:", error);
-        const errorMsg = error.reason || "Failed to complete quiz. Please try again.";
-        setError(errorMsg);
-        toast.error(errorMsg, {
-          position: "top-right",
-          autoClose: 5000,
-        });
-        return false;
-      } finally {
-        setIsTakingQuiz(false);
+      return true;
+    } catch (err) {
+      console.error("Error taking quiz:", err);
+      if (err.code === "CALL_EXCEPTION") {
+        setError(`Error taking quiz: ${err.message}. Check if contentId ${contentId} is valid or quiz already taken.`);
+      } else {
+        setError(`Error taking quiz: ${err.message}`);
       }
-    },
-    [contract, address, isConnected, refreshUserProfile]
-  );
+      return false;
+    } finally {
+      setIsTakingQuiz(false);
+    }
+  };
 
   return { takeQuiz, isTakingQuiz, error };
 };

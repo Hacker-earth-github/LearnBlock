@@ -11,7 +11,7 @@ import { useLearnBlock } from "@/context/LearnBlockContext";
 import useTakeQuiz from "@/hooks/useTakeQuiz";
 
 const QuizInterface = ({ contentId = "1" }) => {
-  const { isConnected, address, getContent, getQuizQuestions } = useLearnBlock();
+  const { isConnected, address, contract, getContent } = useLearnBlock();
   const { takeQuiz, isTakingQuiz, error } = useTakeQuiz();
   const [quizData, setQuizData] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -23,16 +23,14 @@ const QuizInterface = ({ contentId = "1" }) => {
     const fetchQuizData = async () => {
       try {
         const content = await getContent(contentId);
-        if (!content) {
-          throw new Error("Content not found");
-        }
-        const questions = getQuizQuestions(contentId);
+        if (!content) throw new Error("Content not found");
+        const [questions, options, correctIndexes] = await contract.getQuizQuestions(contentId);
         setQuizData({
           contentId,
           title: content.title || "Quiz",
           description: "Test your knowledge",
           pointReward: content.pointReward || "0",
-          questions: questions.length > 0 ? questions : [], // Fallback to empty array
+          questions: questions.map((q, i) => ({ question: q, options: options[i], correctAnswer: correctIndexes[i] })),
         });
       } catch (err) {
         console.error("Error fetching quiz data:", err);
@@ -40,7 +38,7 @@ const QuizInterface = ({ contentId = "1" }) => {
       }
     };
     fetchQuizData();
-  }, [contentId, getContent, getQuizQuestions]);
+  }, [contentId, contract, getContent]);
 
   const handleAnswerSelect = (answerIndex) => {
     const newAnswers = [...selectedAnswers];
@@ -49,7 +47,7 @@ const QuizInterface = ({ contentId = "1" }) => {
   };
 
   const handleNext = () => {
-    if (currentQuestion < quizData.questions.length - 1) {
+    if (currentQuestion < (quizData?.questions.length - 1 || 0)) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
       setShowResults(true);

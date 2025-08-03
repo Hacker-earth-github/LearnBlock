@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-} from "react";
+// LearnBlockContext.jsx
+import { createContext, useCallback, useContext, useEffect, useState, useRef } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import useContractInstance from "../hooks/useContractInstance";
 import useRegister from "../hooks/useRegister";
@@ -28,19 +22,30 @@ export const LearnBlockProvider = ({ children }) => {
     isPendingRegistration,
   } = useRegister();
 
-  // State with persistence
   const [learnBlocks, setLearnBlocks] = useState([]);
   const [allContentIds, setAllContentIds] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [isUserRegistered, setIsUserRegistered] = useState(false);
+  const [isTrustee, setIsTrustee] = useState(false); // New state for trustee status
   const [userBadgeIds, setUserBadgeIds] = useState([]);
   const [completedContent, setCompletedContent] = useState([]);
   const [unredeemedPoints, setUnredeemedPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState({});
 
-  // Debounce ref
   const refreshTimeout = useRef(null);
+
+  // Check if the user is a trustee
+  const checkIsTrustee = useCallback(async () => {
+    if (!readOnlyContract || !address) return false;
+    try {
+      const isTrustee = await readOnlyContract.isTrustee(address); // Adjust based on your contract's method
+      return isTrustee;
+    } catch (error) {
+      console.error("Error checking trustee status:", error);
+      return false;
+    }
+  }, [readOnlyContract, address]);
 
   const getContent = useCallback(
     async (contentId) => {
@@ -62,32 +67,31 @@ export const LearnBlockProvider = ({ children }) => {
     [readOnlyContract]
   );
 
-  const loadAllContentIds = useCallback(async () => {
-    if (!readOnlyContract) return;
-    try {
-      const ids = await readOnlyContract.getAllContentIds();
-      const contentIds = ids.map((id) => id.toString());
-      setAllContentIds(contentIds);
-      const contentPromises = contentIds.map(async (id) => {
-        const content = await getContent(id);
-        return content ? { id, ...content } : null;
-      });
-      const contents = await Promise.all(contentPromises);
-      setLearnBlocks(contents.filter((content) => content !== null));
-    } catch (error) {
-      console.error("Error loading content IDs:", error);
-    }
-  }, [readOnlyContract, getContent]);
+  const loadAllContentIds = async () => {
+    if (!contract) return [];
+    const ids = await contract.getAllContentIds();
+    const blocks = await Promise.all(
+      ids.map(async (id) => {
+        const [title, body, sources, pointReward] = await contract.getContent(id.toString());
+        return { id: id.toString(), title, body, sources, pointReward };
+      })
+    );
+    setLearnBlocks(blocks);
+    return ids;
+  };
 
   const addQuizQuestionToState = useCallback(
     (contentId, questionData) => {
       setQuizQuestions((prev) => ({
         ...prev,
-        [contentId]: [...(prev[contentId] || []), {
-          question: questionData.question,
-          options: questionData.options,
-          correctAnswer: questionData.correctAnswerIndex,
-        }],
+        [contentId]: [
+          ...(prev[contentId] || []),
+          {
+            question: questionData.question,
+            options: questionData.options,
+            correctAnswer: questionData.correctAnswerIndex,
+          },
+        ],
       }));
     },
     []
@@ -115,6 +119,8 @@ export const LearnBlockProvider = ({ children }) => {
       setUnredeemedPoints(points || unredeemedPoints || "0");
       const isRegistered = await checkRegistration();
       setIsUserRegistered(isRegistered);
+      const trusteeStatus = await checkIsTrustee();
+      setIsTrustee(trusteeStatus);
     } catch (error) {
       console.error("Error in refreshUserProfile:", error);
     } finally {
@@ -126,6 +132,7 @@ export const LearnBlockProvider = ({ children }) => {
     getUserProfile,
     getUnredeemedPoints,
     checkRegistration,
+    checkIsTrustee,
     isLoading,
     unredeemedPoints,
   ]);
@@ -142,6 +149,10 @@ export const LearnBlockProvider = ({ children }) => {
       return false;
     }
   }, [registerUser, refreshUserProfile]);
+
+  const refreshLearnBlocks = async () => {
+    await loadAllContentIds();
+  };
 
   useEffect(() => {
     if (isConnected && address && !isLoading) {
@@ -164,7 +175,6 @@ export const LearnBlockProvider = ({ children }) => {
     };
     contract.on("ContentRegistered", handleContentRegistered);
 
-    // Use contract.filters for event topics
     const articleReadFilter = contract.filters.ArticleRead();
     const quizTakenFilter = contract.filters.QuizTaken();
 
@@ -207,6 +217,7 @@ export const LearnBlockProvider = ({ children }) => {
     allContentIds,
     userProfile,
     isUserRegistered,
+    isTrustee, // Add isTrustee to context
     userBadgeIds,
     completedContent,
     unredeemedPoints,
