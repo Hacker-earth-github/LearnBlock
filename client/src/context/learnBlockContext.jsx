@@ -1,5 +1,5 @@
 // LearnBlockContext.jsx
-import { createContext, useCallback, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useCallback, useEffect, useState, useRef } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import useContractInstance from "../hooks/useContractInstance";
 import useRegister from "../hooks/useRegister";
@@ -165,13 +165,13 @@ export const LearnBlockProvider = ({ children }) => {
     const articleReadFilter = contract.filters.ArticleRead();
     const quizTakenFilter = contract.filters.QuizTaken();
 
-    const handleArticleRead = (userAddress, contentId) => {
+    const handleArticleRead = (userAddress) => {
       if (address && userAddress.toLowerCase() === address.toLowerCase()) {
         refreshTimeout.current = setTimeout(refreshUserProfile, 500);
       }
     };
 
-    const handleQuizTaken = (userAddress, contentId, points) => { 
+    const handleQuizTaken = (userAddress) => { 
       if (address && userAddress.toLowerCase() === address.toLowerCase()) {
         refreshTimeout.current = setTimeout(refreshUserProfile, 500);
       }
@@ -216,14 +216,6 @@ export const LearnBlockProvider = ({ children }) => {
       {children}
     </LearnBlockContext.Provider>
   );
-};
-
-export const useLearnBlock = () => {
-  const context = useContext(LearnBlockContext);
-  if (!context) {
-    throw new Error("useLearnBlock must be used within a LearnBlockProvider");
-  }
-  return context;
 };
 
 export default LearnBlockContext;

@@ -1,6 +1,6 @@
-// hooks/useTakeQuiz.js
-import { useCallback, useState } from "react";
-import { useLearnBlock } from "@/context/learnBlockContext";
+
+import { useState } from "react";
+import { useLearnBlock } from "@/context/useLearnBlock";
 
 const useTakeQuiz = () => {
   const { contract, address } = useLearnBlock();
