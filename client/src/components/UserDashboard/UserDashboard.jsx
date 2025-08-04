@@ -34,7 +34,7 @@ import ContentLibrary from "@/components/ContentLibrary";
 import QuizInterface from "@/components/QuizInterface";
 import BadgeShowcase from "@/components/BadgeShowcase";
 import UserProfile from "@/components/UserProfile";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { useAppKitAccount } from "@reown/appkit/react";
 
 function FloatingElement({ children, delay = 0, className = "" }) {
