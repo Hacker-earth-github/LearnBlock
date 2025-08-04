@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Save } from "lucide-react";
-import { useLearnBlock } from "@/context/learnBlockContext";
+import { useLearnBlock } from "@/context/useLearnBlock";
 import useAddQuizQuestion from "@/hooks/useAddQuestion";
 
 const AdminQuiz = () => {

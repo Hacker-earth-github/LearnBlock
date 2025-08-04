@@ -21,7 +21,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { useLearnBlock } from "@/context/learnBlockContext";
+import { useLearnBlock } from "@/context/useLearnBlock";
 import { toast } from "react-toastify";
 
 const UserProfile = memo(({ userProfile, userAddress }) => {
@@ -73,6 +73,7 @@ const UserProfile = memo(({ userProfile, userAddress }) => {
         throw new Error("Transaction reverted");
       }
     } catch (error) {
+      console.error("Error claiming XFI:", error);
       toast.error("Failed to claim XFI. Check console for details or contract balance.");
     } finally {
       setIsClaiming(false);
@@ -266,7 +267,7 @@ const UserProfile = memo(({ userProfile, userAddress }) => {
         </Card>
       </div>
 
-      <Card className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 text-white">
+      {/* <Card className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/10 text-white">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-purple-400" />
@@ -314,7 +315,7 @@ const UserProfile = memo(({ userProfile, userAddress }) => {
             )}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }, (prevProps, nextProps) => prevProps.userProfile === nextProps.userProfile && prevProps.userAddress === nextProps.userAddress);
