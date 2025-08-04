@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/useLearnBlock";
 
 const useAddQuizQuestion = () => {
   const { contract } = useLearnBlock();

@@ -35,8 +35,8 @@ import ContentLibrary from "@/components/ContentLibrary";
 import QuizInterface from "@/components/QuizInterface";
 import BadgeShowcase from "@/components/BadgeShowcase";
 import UserProfile from "@/components/UserProfile";
-import { useLearnBlock } from "@/context/learnBlockContext";
-import { useAppKitAccount } from "@reown/appkit/react";
+import { useLearnBlock } from "@/context/useLearnBlock";
+
 
 function FloatingElement({ children, delay = 0, className = "" }) {
   return (
@@ -322,7 +322,6 @@ const UserDashboard = () => {
     address,
     isConnected,
   } = useLearnBlock();
-  const { address: appKitAddress, isConnected: appKitIsConnected } = useAppKitAccount();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 transition-all duration-500">

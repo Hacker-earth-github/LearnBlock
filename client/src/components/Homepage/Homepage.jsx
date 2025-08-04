@@ -89,11 +89,11 @@ const Homepage = () => {
                 <span className="text-purple-300 font-semibold"> collect exclusive NFT badges</span>.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
-                <div className="group relative bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white px-10 py-5 text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
-                  <appkit-button>
+                {/* <div className="group relative bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white px-10 py-5 text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"> */}
+                  {/* <appkit-button>
                     <Sparkles className="w-6 h-6 ml-3 group-hover:animate-spin relative z-10 inline" />
-                  </appkit-button>
-                </div>
+                  </appkit-button> */}
+                {/* </div> */}
                 <Button
                   variant="outline"
                   size="lg"
@@ -188,7 +188,7 @@ const Homepage = () => {
           </div>
 
           {/* CTA Section */}
-          <div className="relative py-24 overflow-hidden">
+          {/* <div className="relative py-24 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-purple-600 to-sky-500" />
             <div className="absolute inset-0 bg-black/20" />
 
@@ -204,7 +204,7 @@ const Homepage = () => {
                 <appkit-button />
               </Button>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

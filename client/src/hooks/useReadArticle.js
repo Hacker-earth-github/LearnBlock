@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useLearnBlock } from '@/context/LearnBlockContext';
+import { useLearnBlock } from '@/context/useLearnBlock';
 import { toast } from 'react-toastify';
 
 const useReadArticle = () => {

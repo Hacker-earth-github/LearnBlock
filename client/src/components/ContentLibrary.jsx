@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { BookOpen, Clock, Star, Search, CheckCircle, Zap, Brain, Globe, AlertCircle } from "lucide-react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/useLearnBlock";
 import useReadArticle from "@/hooks/useReadArticle";
 import useTakeQuiz from "@/hooks/useTakeQuiz";
 import useCreateContent from "@/hooks/useCreateContent";
@@ -90,7 +90,7 @@ const ContentLibrary = () => {
     }
   };
 
-  const fetchQuizQuestions = async (contentId) => {
+  const fetchQuizQuestions = useCallback(async (contentId) => {
     try {
       const { questions, options, correctIndexes } = await getQuizQuestions(contentId);
       setQuizQuestions(
@@ -105,13 +105,13 @@ const ContentLibrary = () => {
       setQuizError("Failed to load quiz questions.");
       toast.error("Failed to load quiz questions.", { position: "top-right", autoClose: 5000 });
     }
-  };
+  }, [getQuizQuestions]);
 
   useEffect(() => {
     if (selectedContent) {
       fetchQuizQuestions(selectedContent.id);
     }
-  }, [selectedContent]);
+  }, [selectedContent, fetchQuizQuestions]);
 
   const handleAnswerChange = (questionIndex, optionIndex) => {
     setUserAnswers((prev) => ({
@@ -257,12 +257,12 @@ const ContentLibrary = () => {
                 {isReading ? (
                   <>
                     <BookOpen className="w-4 h-4 mr-2 animate-spin" />
-                    Reading...
+                    Completing...
                   </>
                 ) : (
                   <>
                     <BookOpen className="w-4 h-4 mr-2" />
-                    Start Reading
+                    Complete Reading
                   </>
                 )}
               </Button>

@@ -1,5 +1,5 @@
 // LearnBlockContext.jsx
-import { createContext, useCallback, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useCallback, useEffect, useState, useRef } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import useContractInstance from "../hooks/useContractInstance";
 import useRegister from "../hooks/useRegister";
@@ -14,8 +14,6 @@ export const LearnBlockProvider = ({ children }) => {
     checkRegistration,
     getUserProfile,
     getUnredeemedPoints,
-    getUserBadgeIds,
-    getUserCompletedContent,
     isRegistering,
     isCheckingRegistration,
     registrationError,
@@ -23,12 +21,9 @@ export const LearnBlockProvider = ({ children }) => {
   } = useRegister();
 
   const [learnBlocks, setLearnBlocks] = useState([]);
-  const [allContentIds, setAllContentIds] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [isUserRegistered, setIsUserRegistered] = useState(false);
   const [isTrustee, setIsTrustee] = useState(false); // New state for trustee status
-  const [userBadgeIds, setUserBadgeIds] = useState([]);
-  const [completedContent, setCompletedContent] = useState([]);
   const [unredeemedPoints, setUnredeemedPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState({});
@@ -67,7 +62,7 @@ export const LearnBlockProvider = ({ children }) => {
     [readOnlyContract]
   );
 
-  const loadAllContentIds = async () => {
+  const loadAllContentIds = useCallback(async () => {
     if (!contract) return [];
     const ids = await contract.getAllContentIds();
     const blocks = await Promise.all(
@@ -78,7 +73,7 @@ export const LearnBlockProvider = ({ children }) => {
     );
     setLearnBlocks(blocks);
     return ids;
-  };
+  }, [contract]);
 
   const addQuizQuestionToState = useCallback(
     (contentId, questionData) => {
@@ -109,13 +104,10 @@ export const LearnBlockProvider = ({ children }) => {
     if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
 
     setIsLoading(true);
-    console.log("Starting refreshUserProfile for address:", address);
     try {
       const profile = await getUserProfile();
-      console.log("Fetched user profile:", profile);
       setUserProfile((prev) => profile || prev || { userId: "0", articlesRead: "0" });
       const points = await getUnredeemedPoints();
-      console.log("Fetched unredeemed points:", points);
       setUnredeemedPoints(points || unredeemedPoints || "0");
       const isRegistered = await checkRegistration();
       setIsUserRegistered(isRegistered);
@@ -150,10 +142,6 @@ export const LearnBlockProvider = ({ children }) => {
     }
   }, [registerUser, refreshUserProfile]);
 
-  const refreshLearnBlocks = async () => {
-    await loadAllContentIds();
-  };
-
   useEffect(() => {
     if (isConnected && address && !isLoading) {
       refreshUserProfile();
@@ -170,7 +158,6 @@ export const LearnBlockProvider = ({ children }) => {
     if (!contract) return;
 
     const handleContentRegistered = () => {
-      console.log("ContentRegistered event detected, refreshing content list");
       loadAllContentIds();
     };
     contract.on("ContentRegistered", handleContentRegistered);
@@ -178,24 +165,13 @@ export const LearnBlockProvider = ({ children }) => {
     const articleReadFilter = contract.filters.ArticleRead();
     const quizTakenFilter = contract.filters.QuizTaken();
 
-    const handleArticleRead = (userAddress, contentId) => {
-      console.log("ArticleRead event detected:", {
-        userAddress: userAddress.toLowerCase(),
-        address: address?.toLowerCase(),
-        contentId: contentId.toString(),
-      });
+    const handleArticleRead = (userAddress) => {
       if (address && userAddress.toLowerCase() === address.toLowerCase()) {
         refreshTimeout.current = setTimeout(refreshUserProfile, 500);
       }
     };
 
-    const handleQuizTaken = (userAddress, contentId, points) => {
-      console.log("QuizTaken event detected:", {
-        userAddress: userAddress.toLowerCase(),
-        address: address?.toLowerCase(),
-        contentId: contentId.toString(),
-        points: points.toString(),
-      });
+    const handleQuizTaken = (userAddress) => { 
       if (address && userAddress.toLowerCase() === address.toLowerCase()) {
         refreshTimeout.current = setTimeout(refreshUserProfile, 500);
       }
@@ -214,12 +190,9 @@ export const LearnBlockProvider = ({ children }) => {
 
   const contextValue = {
     learnBlocks,
-    allContentIds,
     userProfile,
     isUserRegistered,
     isTrustee, // Add isTrustee to context
-    userBadgeIds,
-    completedContent,
     unredeemedPoints,
     registerUser: handleUserRegistration,
     refreshUserProfile,
@@ -243,14 +216,6 @@ export const LearnBlockProvider = ({ children }) => {
       {children}
     </LearnBlockContext.Provider>
   );
-};
-
-export const useLearnBlock = () => {
-  const context = useContext(LearnBlockContext);
-  if (!context) {
-    throw new Error("useLearnBlock must be used within a LearnBlockProvider");
-  }
-  return context;
 };
 
 export default LearnBlockContext;
