@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { LearnBlockContext } from "./learnBlockContext";
+import LearnBlockContext from "./learnBlockContext";
 
 export const useLearnBlock = () => {
   const context = useContext(LearnBlockContext);
