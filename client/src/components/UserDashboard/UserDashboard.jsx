@@ -1,3 +1,4 @@
+
 // UserDashboard.jsx
 import { useState, useEffect, memo } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
@@ -5,29 +6,37 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   BookOpen,
+  Trophy,
+  Award,
+  Users,
   TrendingUp,
   Wallet,
-  Users,
+  CheckCircle,
+  Target,
+  Activity,
+  Search,
+  Bell,
+  Plus,
   Sparkles,
   Zap,
   Star,
   Crown,
+  Gem,
   Loader2,
   AlertCircle,
   UserPlus,
   Rocket,
-  Gem,
-  Award,
 } from "lucide-react";
 import ContentLibrary from "@/components/ContentLibrary";
+import QuizInterface from "@/components/QuizInterface";
 import BadgeShowcase from "@/components/BadgeShowcase";
 import UserProfile from "@/components/UserProfile";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { useAppKitAccount } from "@reown/appkit/react";
-import { toast } from "react-toastify";
 
 function FloatingElement({ children, delay = 0, className = "" }) {
   return (
@@ -53,37 +62,27 @@ const UserDashboardContent = memo(
     address,
     isConnected,
     isRegistering,
-    loadAllContentIds,
+    isTrustee, // Add isTrustee prop
   }) => {
-    const [activeTab, setActiveTab] = useState("content");
+    const [activeTab, setActiveTab] = useState("dashboard");
     const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
+    const navigate = useNavigate(); // Initialize useNavigate
 
     useEffect(() => {
       if (!isLoading && isConnected && address) {
         setShowRegistrationPrompt(!isUserRegistered && !isPendingRegistration);
-      } else {
-        setShowRegistrationPrompt(false);
       }
     }, [isUserRegistered, isPendingRegistration, isLoading, isConnected, address]);
 
+    useEffect(() => {
+      // Redirect to admin route if user is a trustee
+      if (isUserRegistered && isTrustee) {
+        navigate("/admin");
+      }
+    }, [isUserRegistered, isTrustee, navigate]);
+
     const handleTabChange = (tab) => {
       setActiveTab(tab);
-    };
-
-    const handleRefresh = async () => {
-      try {
-        await Promise.all([refreshUserProfile(), loadAllContentIds()]);
-        toast.success("Profile and content refreshed successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      } catch (err) {
-        console.error("Error refreshing profile or content:", err);
-        toast.error("Failed to refresh profile or content.", {
-          position: "top-right",
-          autoClose: 5000,
-        });
-      }
     };
 
     return (
@@ -95,7 +94,9 @@ const UserDashboardContent = memo(
                 <div className="w-16 h-16 bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   <UserPlus className="w-8 h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-bold text-slate-100">Welcome to LearnBlock!</CardTitle>
+                <CardTitle className="text-2xl font-bold text-slate-100">
+                  Welcome to LearnBlock!
+                </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <p className="text-slate-300 leading-relaxed">
@@ -104,7 +105,9 @@ const UserDashboardContent = memo(
                 {registrationError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{registrationError?.message || "Registration failed. Please try again."}</AlertDescription>
+                    <AlertDescription>
+                      {registrationError?.message || "Registration failed. Please try again."}
+                    </AlertDescription>
                   </Alert>
                 )}
                 <div className="space-y-3">
@@ -136,11 +139,15 @@ const UserDashboardContent = memo(
         {(isUserRegistered || isPendingRegistration) && (
           <>
             <Button
-              onClick={handleRefresh}
+              onClick={refreshUserProfile}
               disabled={isLoading}
-              className="mb-4 bg-gradient-to-r from-emerald-400 to-purple-500 hover:from-emerald-500 hover:to-purple-600 text-white py-2 px-4 rounded-lg"
+              className="mb-4 bg-gradient-to-r from-emerald-400 to-purple-500 text-white py-2 px-4 rounded-lg"
             >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Refresh Profile & Content"}
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                "Refresh Profile"
+              )}
             </Button>
             <div className="flex flex-col lg:flex-row gap-8">
               <div className="lg:w-80 space-y-6">
@@ -154,10 +161,12 @@ const UserDashboardContent = memo(
                       </Avatar>
                       <div>
                         <h3 className="text-xl font-bold text-slate-100">
-                          {isUserRegistered && userProfile ? `User #${userProfile.userId}` : "Guest User"}
+                          {isUserRegistered && userProfile
+                            ? `User #${userProfile.userId}`
+                            : "Guest User"}
                         </h3>
                         <p className="text-sm text-slate-400 font-mono bg-slate-700 px-2 py-1 rounded-lg">
-                          {address || "Not connected"}
+                          {address}
                         </p>
                       </div>
                     </div>
@@ -165,7 +174,7 @@ const UserDashboardContent = memo(
                       <div className="flex items-center justify-between p-4 bg-slate-700/80 rounded-xl border border-slate-600/50">
                         <span className="text-slate-300 font-medium">Total Points</span>
                         <span className="text-xl font-bold text-slate-100">
-                          {userProfile ? userProfile.totalPointsEarned || 0 : 0}
+                          {userProfile ? userProfile.totalPointsEarned : 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-700/80 to-slate-600/80 rounded-xl border border-slate-500/50">
@@ -175,11 +184,11 @@ const UserDashboardContent = memo(
                         </span>
                       </div>
                       <Button
-                        disabled={!isUserRegistered || !unredeemedPoints || Number(unredeemedPoints) <= 0}
+                        disabled={!isUserRegistered || !unredeemedPoints || unredeemedPoints === "0"}
                         className="w-full bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 hover:from-emerald-500 hover:via-purple-600 hover:to-sky-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                       >
                         <Gem className="w-5 h-5 mr-2" />
-                        Claim {(Number(unredeemedPoints) * 0.1).toFixed(1) || 0} XFI
+                        Claim {(unredeemedPoints * 0.1).toFixed(1)} XFI
                       </Button>
                     </div>
                   </CardContent>
@@ -196,15 +205,23 @@ const UserDashboardContent = memo(
                       {
                         icon: BookOpen,
                         label: "Articles",
-                        value: userProfile ? userProfile.articlesRead || 0 : 0,
+                        value: userProfile ? userProfile.articlesRead : 0,
                         color: "text-emerald-400",
+                        bg: "bg-slate-700",
+                        border: "border-slate-600",
+                      },
+                      {
+                        icon: Target,
+                        label: "Quizzes",
+                        value: userProfile ? userProfile.quizzesTaken : 0,
+                        color: "text-purple-400",
                         bg: "bg-slate-700",
                         border: "border-slate-600",
                       },
                       {
                         icon: Award,
                         label: "Badges",
-                        value: userProfile ? userProfile.badges || 0 : 0,
+                        value: userProfile ? userProfile.badges : 0,
                         color: "text-sky-400",
                         bg: "bg-slate-700",
                         border: "border-slate-600",
@@ -229,6 +246,7 @@ const UserDashboardContent = memo(
                   <TabsList className="bg-slate-800/80 border border-slate-700 p-2 shadow-lg backdrop-blur-xl rounded-2xl">
                     {[
                       { value: "content", icon: BookOpen, label: "Courses" },
+                      { value: "quiz", icon: Target, label: "Quizzes" },
                       { value: "badges", icon: Award, label: "Badges" },
                       { value: "profile", icon: Users, label: "Profile" },
                     ].map((tab) => (
@@ -242,8 +260,14 @@ const UserDashboardContent = memo(
                       </TabsTrigger>
                     ))}
                   </TabsList>
+                  <TabsContent value="dashboard" className="space-y-8">
+                    {/* Dashboard content */}
+                  </TabsContent>
                   <TabsContent value="content">
-                    <ContentLibrary />
+                    <ContentLibrary onTabChange={handleTabChange} />
+                  </TabsContent>
+                  <TabsContent value="quiz">
+                    <QuizInterface />
                   </TabsContent>
                   <TabsContent value="badges">
                     <BadgeShowcase userProfile={userProfile} />
@@ -278,7 +302,7 @@ const UserDashboardContent = memo(
       prevProps.address === nextProps.address &&
       prevProps.isConnected === nextProps.isConnected &&
       prevProps.isRegistering === nextProps.isRegistering &&
-      prevProps.loadAllContentIds === nextProps.loadAllContentIds
+      prevProps.isTrustee === nextProps.isTrustee // Add isTrustee to memo comparison
     );
   }
 );
@@ -294,7 +318,9 @@ const UserDashboard = () => {
     unredeemedPoints,
     isPendingRegistration,
     isRegistering,
-    loadAllContentIds,
+    isTrustee, // Add isTrustee from context
+    address,
+    isConnected,
   } = useLearnBlock();
   const { address: appKitAddress, isConnected: appKitIsConnected } = useAppKitAccount();
 
@@ -330,14 +356,39 @@ const UserDashboard = () => {
                   <p className="text-xs text-slate-400">Blockchain Education</p>
                 </div>
               </div>
+         
             </div>
             <div className="flex items-center space-x-4">
               {(isUserRegistered || isPendingRegistration) && (
-                <Avatar className="w-9 h-9 ring-2 ring-emerald-400/30 shadow-md">
-                  <AvatarFallback className="bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 text-white text-sm font-bold">
-                    {address ? address.slice(2, 4).toUpperCase() : "??"}
-                  </AvatarFallback>
-                </Avatar>
+                <>
+                  <div className="hidden md:flex items-center space-x-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search courses..."
+                        className="pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-64 shadow-sm text-slate-100 placeholder:text-slate-400"
+                      />
+                    </div>
+                    <Button variant="ghost" size="sm" className="hover:bg-emerald-900/30 rounded-xl text-slate-300">
+                      <Bell className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="hover:bg-purple-900/30 rounded-xl text-slate-300">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 px-3 py-1 rounded-full shadow-sm">
+                      <Gem className="w-3 h-3 mr-1" />
+                      {unredeemedPoints || 0} Points
+                    </Badge>
+                    <Avatar className="w-9 h-9 ring-2 ring-emerald-400/30 shadow-md">
+                      <AvatarFallback className="bg-gradient-to-r from-emerald-400 via-purple-500 to-sky-400 text-white text-sm font-bold">
+                        {address ? address.slice(2, 4).toUpperCase() : "??"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -379,7 +430,7 @@ const UserDashboard = () => {
           address={address}
           isConnected={isConnected}
           isRegistering={isRegistering}
-          loadAllContentIds={loadAllContentIds}
+          isTrustee={isTrustee} // Pass isTrustee prop
         />
       )}
     </div>
