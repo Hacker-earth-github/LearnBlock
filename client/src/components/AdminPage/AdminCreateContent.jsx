@@ -11,9 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Edit, Trash2, Save } from "lucide-react";
 import { useLearnBlock } from "@/context/LearnBlockContext";
 import useCreateContent from "@/hooks/useCreateContent";
+import { toast } from "react-toastify";
 
 const AdminCreateContent = () => {
-  const { learnBlocks, loadAllContentIds, contract, address, isConnected } = useLearnBlock();
+  const { learnBlocks, contract, address, isConnected } = useLearnBlock();
   const { createContent, updateContent, deleteContent, isCreating, isUpdating, isDeleting, error, getContentMetadata } = useCreateContent();
   const [newContent, setNewContent] = useState({
     title: "",

@@ -54,23 +54,18 @@ const UserProfile = memo(({ userProfile, userAddress }) => {
 
   const handleClaimXFI = async () => {
     if (!contract || isClaiming || unredeemedPoints === 0) {
-      console.log("Claim aborted: No contract, already claiming, or no unredeemed points");
-      return;
+        return;
     }
 
     setIsClaiming(true);
-    console.log("Attempting to claim XFI. Unredeemed points:", unredeemedPoints, "for address:", userAddress);
-    console.log("User profile:", profile);
-    console.log("Contract instance:", contract);
+
 
     try {
       // Ensure the function call is correct
       const tx = await contract.claimXFIReward({
         gasLimit: 200000, // Manually set gas limit
       });
-      console.log("Transaction sent, hash:", tx.hash);
       const receipt = await tx.wait();
-      console.log("Transaction receipt:", receipt);
       if (receipt.status === 1) {
         toast.success("XFI claimed successfully!");
         await refreshUserProfile();
@@ -78,7 +73,6 @@ const UserProfile = memo(({ userProfile, userAddress }) => {
         throw new Error("Transaction reverted");
       }
     } catch (error) {
-      console.error("Error claiming XFI:", error);
       toast.error("Failed to claim XFI. Check console for details or contract balance.");
     } finally {
       setIsClaiming(false);
