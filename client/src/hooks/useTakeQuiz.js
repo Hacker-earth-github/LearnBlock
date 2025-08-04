@@ -1,6 +1,6 @@
 // hooks/useTakeQuiz.js
-import { useState } from "react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useCallback, useState } from "react";
+import { useLearnBlock } from "@/context/learnBlockContext";
 
 const useTakeQuiz = () => {
   const { contract, address } = useLearnBlock();
@@ -15,18 +15,14 @@ const useTakeQuiz = () => {
 
     setIsTakingQuiz(true);
     try {
-      console.log("Taking quiz for contentId:", contentId, "by address:", address);
       const tx = await contract.takeQuiz(contentId, {
         from: address,
         gasLimit: 300000, // Manual gas limit as a workaround
       });
-      console.log("Transaction sent:", tx.hash);
-      const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt);
+      await tx.wait();
       setError(null);
       return true;
     } catch (err) {
-      console.error("Error taking quiz:", err);
       if (err.code === "CALL_EXCEPTION") {
         setError(`Error taking quiz: ${err.message}. Check if contentId ${contentId} is valid or quiz already taken.`);
       } else {

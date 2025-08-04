@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { BookOpen, Clock, Star, Search, CheckCircle, Zap, Brain, Globe } from "lucide-react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import useReadArticle from "@/hooks/useReadArticle";
 import useTakeQuiz from "@/hooks/useTakeQuiz";
 import useCreateContent from "@/hooks/useCreateContent";
@@ -150,12 +150,12 @@ const ContentLibrary = () => {
                 {isReading ? (
                   <>
                     <BookOpen className="w-4 h-4 mr-2 animate-spin" />
-                    Reading...
+                    Completing...
                   </>
                 ) : (
                   <>
                     <BookOpen className="w-4 h-4 mr-2" />
-                    Start Reading
+                    Complete Reading
                   </>
                 )}
               </Button>

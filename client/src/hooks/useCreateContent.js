@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { parseUnits } from "ethers"; // For ethers v6
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { toast } from "react-toastify";
 
 const useCreateContent = () => {
-  const { contract, readOnlyContract, loadAllContentIds } = useLearnBlock();
+  const { contract, loadAllContentIds } = useLearnBlock();
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -29,7 +29,6 @@ const useCreateContent = () => {
         const sourcesArray = contentData.sources ? contentData.sources.split(",").map((s) => s.trim()) : [];
         const pointReward = parseUnits(contentData.pointReward.toString(), 0);
 
-        console.log("Creating content with data:", { ...contentData, sourcesArray, pointReward });
         const tx = await contract.registerContent(
           contentData.title,
           contentData.body,
@@ -37,7 +36,6 @@ const useCreateContent = () => {
           pointReward
         );
         const receipt = await tx.wait();
-        console.log("Content created, transaction hash:", tx.hash);
 
         // Extract contentId from ContentRegistered event (assuming it emits contentId)
         const contentId = receipt.events?.find((e) => e.event === "ContentRegistered")?.args?.contentId?.toString();
@@ -102,7 +100,6 @@ const useCreateContent = () => {
         const sourcesArray = contentData.sources ? contentData.sources.split(",").map((s) => s.trim()) : [];
         const pointReward = parseUnits(contentData.pointReward.toString(), 0);
 
-        console.log("Updating content with ID:", contentId, "Data:", { ...contentData, sourcesArray, pointReward });
         const tx = await contract.updateContent(
           contentId,
           contentData.title,
@@ -111,7 +108,6 @@ const useCreateContent = () => {
           pointReward
         );
         await tx.wait();
-        console.log("Content updated, transaction hash:", tx.hash);
 
         // Update metadata
         setMetadata((prev) => ({
@@ -167,10 +163,8 @@ const useCreateContent = () => {
       setError(null);
 
       try {
-        console.log("Deleting content with ID:", contentId);
-        const tx = await contract.deleteContent(contentId);
+          const tx = await contract.deleteContent(contentId);
         await tx.wait();
-        console.log("Content deleted, transaction hash:", tx.hash);
 
         // Remove metadata
         setMetadata((prev) => {

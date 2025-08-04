@@ -34,9 +34,8 @@ import ContentLibrary from "@/components/ContentLibrary";
 import QuizInterface from "@/components/QuizInterface";
 import BadgeShowcase from "@/components/BadgeShowcase";
 import UserProfile from "@/components/UserProfile";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { useAppKitAccount } from "@reown/appkit/react";
-import { toast } from "react-toastify";
 
 function FloatingElement({ children, delay = 0, className = "" }) {
   return (
@@ -245,7 +244,6 @@ const UserDashboardContent = memo(
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
                   <TabsList className="bg-slate-800/80 border border-slate-700 p-2 shadow-lg backdrop-blur-xl rounded-2xl">
                     {[
-                      { value: "dashboard", icon: Activity, label: "Overview" },
                       { value: "content", icon: BookOpen, label: "Courses" },
                       { value: "quiz", icon: Target, label: "Quizzes" },
                       { value: "badges", icon: Award, label: "Badges" },
@@ -357,19 +355,7 @@ const UserDashboard = () => {
                   <p className="text-xs text-slate-400">Blockchain Education</p>
                 </div>
               </div>
-              {(isUserRegistered || isPendingRegistration) && (
-                <nav className="hidden md:flex items-center space-x-6">
-                  {["Overview", "Courses", "Quizzes", "Badges"].map((item) => (
-                    <button
-                      key={item}
-                      className="relative text-slate-300 hover:text-emerald-400 font-medium transition-all duration-300 group"
-                    >
-                      {item}
-                      <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-emerald-400 to-purple-400 group-hover:w-full transition-all duration-300" />
-                    </button>
-                  ))}
-                </nav>
-              )}
+         
             </div>
             <div className="flex items-center space-x-4">
               {(isUserRegistered || isPendingRegistration) && (

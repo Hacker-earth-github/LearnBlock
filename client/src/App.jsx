@@ -1,10 +1,9 @@
 // App.jsx
 import "./config/connection";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LearnBlockProvider, useLearnBlock } from "@/context/LearnBlockContext";
+import {  Routes, Route, Navigate } from "react-router-dom";
+import { LearnBlockProvider, useLearnBlock } from "@/context/learnBlockContext";
 import Content from "./pages/Content"; // Root route component
 import Admin from "./pages/Admin"; // Use Admin from components, not ./pages/Admin
-import "./App.css";
 
 // Protected Route Component
 const ProtectedAdminRoute = ({ children }) => {

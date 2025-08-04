@@ -3,7 +3,6 @@ const { ethers } = require("hardhat");
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  console.log("Deploying with account:", deployer.address);
  const balance = await ethers.provider.getBalance(await deployer.getAddress());
   console.log("Balance:", ethers.formatEther(balance), "XFI");
 
