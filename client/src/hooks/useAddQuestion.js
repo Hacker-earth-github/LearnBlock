@@ -1,4 +1,3 @@
-// hooks/useAddQuizQuestion.js
 import { useState } from "react";
 import { useLearnBlock } from "@/context/LearnBlockContext";
 
@@ -8,15 +7,20 @@ const useAddQuizQuestion = () => {
   const [error, setError] = useState(null);
 
   const addQuizQuestion = async ({ contentId, question, options, correctAnswer }) => {
-    if (!contract) return false;
-    setIsAddingQuestion(true);
+    if (!contract) {
+      setError("Contract not initialized");
+      return false;
+    }
     try {
+      setIsAddingQuestion(true);
+      setError(null);
+      console.log("Adding quiz question:", { contentId, question, options, correctAnswer });
       const tx = await contract.addQuizQuestion(contentId, question, options, correctAnswer);
       await tx.wait();
-      setError(null);
       return true;
     } catch (err) {
-      setError(err.message);
+      console.error("Error adding quiz question:", err);
+      setError(err.message || "Failed to add quiz question");
       return false;
     } finally {
       setIsAddingQuestion(false);
