@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { parseUnits } from "ethers"; // For ethers v6
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { toast } from "react-toastify";
 
 const useCreateContent = () => {
