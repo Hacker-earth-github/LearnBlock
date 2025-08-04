@@ -45,9 +45,15 @@ contract EduTechQuiz is ERC721Enumerable {
     event QuizTaken(address indexed user, uint256 indexed contentId, uint256 points);
     event BadgeMinted(address indexed user, uint256 badgeId, bool isGolden);
     event XFIRewardClaimed(address indexed user, uint256 amount);
+    event UserRegistered(address indexed user, uint256 userId);
 
     modifier onlyTrustee() {
         require(isTrustee[msg.sender], "Not authorized");
+        _;
+    }
+
+    modifier onlyRegistered() {
+        require(profiles[msg.sender].userId != 0, "User not registered");
         _;
     }
 
@@ -66,6 +72,15 @@ contract EduTechQuiz is ERC721Enumerable {
     }
 
     receive() external payable {}
+
+    /* ========== USER REGISTRATION ========== */
+
+    function registerUser() external {
+        require(profiles[msg.sender].userId == 0, "Already registered");
+        profiles[msg.sender].userId = nextUserId;
+        emit UserRegistered(msg.sender, nextUserId);
+        nextUserId++;
+    }
 
     /* ========== CONTENT OPERATIONS ========== */
 
@@ -105,24 +120,15 @@ contract EduTechQuiz is ERC721Enumerable {
 
     /* ========== USER OPERATIONS ========== */
 
-    function _ensureRegistered(address user) internal {
-        if (profiles[user].userId == 0) {
-            profiles[user].userId = nextUserId;
-            nextUserId++;
-        }
-    }
-
-    function readArticle(uint256 contentId) external {
+    function readArticle(uint256 contentId) external onlyRegistered {
         require(contents[contentId].exists, "Content not found");
-        _ensureRegistered(msg.sender);
         UserProfile storage u = profiles[msg.sender];
         u.articlesRead++;
         emit ArticleRead(msg.sender, contentId);
     }
 
-    function takeQuiz(uint256 contentId) external {
+    function takeQuiz(uint256 contentId) external onlyRegistered {
         require(contents[contentId].exists, "Content not found");
-        _ensureRegistered(msg.sender);
         require(!hasCompleted[msg.sender][contentId], "Already completed");
 
         UserProfile storage u = profiles[msg.sender];
@@ -161,7 +167,7 @@ contract EduTechQuiz is ERC721Enumerable {
 
     /* ========== REWARD CLAIM ========== */
 
-    function claimXFIReward() external {
+    function claimXFIReward() external onlyRegistered {
         UserProfile storage u = profiles[msg.sender];
 
         uint256 unredeemedPoints = u.totalPointsEarned - u.totalPointsRedeemed;
