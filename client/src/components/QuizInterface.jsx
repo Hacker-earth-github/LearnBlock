@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, XCircle, Trophy, Clock, Target, Zap } from "lucide-react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import useTakeQuiz from "@/hooks/useTakeQuiz";
 
 const QuizInterface = ({ contentId = "1" }) => {

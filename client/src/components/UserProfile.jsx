@@ -21,7 +21,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { useLearnBlock } from "@/context/LearnBlockContext";
+import { useLearnBlock } from "@/context/learnBlockContext";
 import { toast } from "react-toastify";
 
 const UserProfile = memo(({ userProfile, userAddress }) => {
